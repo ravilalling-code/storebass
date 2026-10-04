@@ -132,7 +132,7 @@
   <!-- ========================================================================= -->
   <!-- 1. BARRA SUPERIOR (Rotador dinámico y editable del viaje)                  -->
   <!-- ========================================================================= -->
-  <div class="bg-slate-950 text-white text-[11px] font-semibold py-2 px-4 border-b border-slate-800/80 sticky top-0 z-50">
+  <div class="bg-slate-950 text-white text-[11px] font-semibold py-2 px-4 border-b border-slate-800/80">
     <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
       
       <div class="flex items-center gap-2 overflow-hidden flex-1">
@@ -156,23 +156,23 @@
   <!-- ========================================================================= -->
   <!-- 2. HEADER FIJO Y TRANSLÚCIDO                                              -->
   <!-- ========================================================================= -->
-  <header class="sticky top-8 left-0 w-full z-40 glass-surface border-b border-slate-200/80 dark:border-darkBorder shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+  <header class="sticky top-0 left-0 w-full z-40 glass-surface border-b border-slate-200/80 dark:border-darkBorder shadow-sm">
+    <div class="max-w-7xl mx-auto px-3.5 sm:px-6">
       
       <!-- Fila Principal: Logo, Buscador Central, Cuenta & Mi Lista -->
-      <div class="h-[70px] flex items-center justify-between gap-3 lg:gap-8">
+      <div class="h-14 sm:h-[70px] flex items-center justify-between gap-2.5 lg:gap-8">
         
         <!-- Logo STORE BASS -->
-        <a href="index.html" class="flex items-center gap-3 group flex-shrink-0">
-          <div class="w-11 h-11 rounded-2xl overflow-hidden border border-amber-500/40 shadow-md group-hover:scale-105 transition-transform duration-200 bg-slate-900 flex-shrink-0 flex items-center justify-center">
+        <a href="index.html" class="flex items-center gap-2.5 sm:gap-3 group flex-shrink-0">
+          <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl overflow-hidden border border-amber-500/40 shadow-md group-hover:scale-105 transition-transform duration-200 bg-slate-900 flex-shrink-0 flex items-center justify-center">
             <img src="Storebass.jpg" onerror="this.src='StoreBass/Storebass.jpg'" alt="STORE BASS Logo" class="w-full h-full object-cover">
           </div>
           <div class="flex flex-col">
             <div class="flex items-center gap-1.5">
-              <span class="text-xl font-black tracking-tight text-slate-900 dark:text-white font-display">STORE <span class="text-amber-500">BASS</span></span>
+              <span class="text-base sm:text-xl font-black tracking-tight text-slate-900 dark:text-white font-display">STORE <span class="text-amber-500">BASS</span></span>
               <span class="hidden sm:inline-block px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[9px] font-black uppercase">Personal Shopper</span>
             </div>
-            <span class="text-[9px] uppercase font-bold tracking-widest text-slate-500 dark:text-slate-400">Comprador que viaja a USA</span>
+            <span class="text-[9px] uppercase font-bold tracking-widest text-slate-500 dark:text-slate-400 hidden xs:inline">Comprador que viaja a USA</span>
           </div>
         </a>
 
@@ -398,7 +398,7 @@
   <!-- 4. FRANJA DE CONFIANZA (4 Pilares)                                        -->
   <!-- ========================================================================= -->
   <section class="max-w-7xl mx-auto px-4 sm:px-6 py-2">
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 p-5 sm:p-6 rounded-3xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-darkBorder shadow-card-subtle">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-darkBorder shadow-card-subtle">
       
       <div class="flex items-center gap-3">
         <div class="w-11 h-11 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center flex-shrink-0">
@@ -466,7 +466,7 @@
     </div>
 
     <!-- Grilla de 4 Tarjetas de Ofertas -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
       
       <!-- Tarjeta Oferta 1 -->
       <div class="bg-white dark:bg-darkCard border border-slate-200/80 dark:border-darkBorder rounded-3xl p-4 shadow-card-subtle flex flex-col justify-between group hover:border-amber-500/40 transition-all">
@@ -704,7 +704,7 @@
         </button>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         
         <!-- Stock 1: Dior Sauvage -->
         <div class="product-item bg-white dark:bg-darkCard border border-slate-200/80 dark:border-darkBorder rounded-3xl p-4 shadow-card-subtle flex flex-col justify-between group hover:border-amber-500/40 transition-all" data-category="Perfumes" data-disp="stock" data-price="529">
@@ -861,7 +861,7 @@
         </a>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         
         <!-- Viaje 1: iPhone 16 Pro Max -->
         <div class="product-item bg-white dark:bg-darkCard border border-slate-200/80 dark:border-darkBorder rounded-3xl p-4 shadow-card-subtle flex flex-col justify-between group hover:border-amber-500/40 transition-all" data-category="Tecnología" data-disp="ultimos" data-price="4890">
@@ -1014,7 +1014,7 @@
         </button>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         
         <!-- Fragancia 1: Lattafa Asad -->
         <div class="product-item bg-white dark:bg-darkCard border border-slate-200/80 dark:border-darkBorder rounded-3xl p-4 shadow-card-subtle flex flex-col justify-between group hover:border-amber-500/40 transition-all" data-category="Perfumes" data-disp="viaje" data-price="179">
@@ -1167,7 +1167,7 @@
         </button>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         
         <!-- Gisou Hair Oil -->
         <div class="product-item bg-white dark:bg-darkCard border border-slate-200/80 dark:border-darkBorder rounded-3xl p-4 shadow-card-subtle flex flex-col justify-between group hover:border-amber-500/40 transition-all" data-category="Belleza" data-disp="ultimos" data-price="295">
@@ -1320,7 +1320,7 @@
         </button>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         
         <!-- Echo Dot 5 -->
         <div class="product-item bg-white dark:bg-darkCard border border-slate-200/80 dark:border-darkBorder rounded-3xl p-4 shadow-card-subtle flex flex-col justify-between group hover:border-amber-500/40 transition-all" data-category="Tecnología" data-disp="stock" data-price="249">
@@ -1473,7 +1473,7 @@
         </button>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         
         <!-- Fossil Neutra -->
         <div class="product-item bg-white dark:bg-darkCard border border-slate-200/80 dark:border-darkBorder rounded-3xl p-4 shadow-card-subtle flex flex-col justify-between group hover:border-amber-500/40 transition-all" data-category="Relojes" data-disp="stock" data-price="489">
