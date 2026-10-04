@@ -159,7 +159,7 @@
   <header class="sticky top-0 left-0 w-full z-40 glass-surface border-b border-slate-200/80 dark:border-darkBorder shadow-sm">
     <div class="max-w-7xl mx-auto px-3.5 sm:px-6">
       
-      <!-- Fila Principal: Logo, Buscador Central, Cuenta & Mi Lista -->
+      <!-- Fila Principal: Logo, Buscador Central, Cuenta & Carrito -->
       <div class="h-14 sm:h-[70px] flex items-center justify-between gap-2.5 lg:gap-8">
         
         <!-- Logo STORE BASS -->
@@ -215,16 +215,12 @@
             <span class="material-symbols-outlined text-lg" id="theme-toggle-dark-icon">dark_mode</span>
           </button>
 
-          <!-- Botón "Mi lista" -->
-          <button onclick="toggleListDrawer()" class="flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 px-3.5 py-2.5 rounded-2xl shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all">
-            <div class="relative">
-              <span class="material-symbols-outlined text-lg text-amber-400 dark:text-amber-500">bookmark</span>
-              <span id="header-list-badge" class="absolute -top-1.5 -right-1.5 bg-amber-500 text-slate-950 text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center transition-transform">0</span>
-            </div>
-            <div class="text-left">
-              <span class="text-[10px] font-bold block uppercase leading-none text-slate-400 dark:text-slate-600">Mi lista</span>
-              <span id="header-list-total" class="text-xs font-black hidden sm:inline leading-none">S/ 0.00</span>
-            </div>
+          <!-- Botón Carrito de Compras (Solo ícono de carrito) -->
+          <button onclick="toggleListDrawer()" aria-label="Carrito de compras" title="Carrito de compras"
+            class="relative w-10 h-10 rounded-2xl bg-slate-100 dark:bg-darkElevated text-slate-700 dark:text-slate-200 hover:text-amber-500 hover:bg-slate-200 dark:hover:bg-slate-800 flex items-center justify-center transition-all shadow-sm hover:scale-105 active:scale-95">
+            <span class="material-symbols-outlined text-xl text-amber-500">shopping_cart</span>
+            <span id="header-list-badge" class="absolute -top-1.5 -right-1.5 bg-amber-500 text-slate-950 text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center transition-transform">0</span>
+            <span id="header-list-total" class="hidden">S/ 0.00</span>
           </button>
 
         </div>
@@ -496,8 +492,8 @@
         </div>
         <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
           <button onclick="addToList('Lattafa Khamrah 100ml', 199, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-            <span class="material-symbols-outlined text-sm">bookmark_add</span>
-            <span>Agregar a mi lista</span>
+            <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+            <span>Agregar al carrito</span>
           </button>
         </div>
       </div>
@@ -530,8 +526,8 @@
         </div>
         <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
           <button onclick="addToList('Sony WH-1000XM5', 1389, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-            <span class="material-symbols-outlined text-sm">bookmark_add</span>
-            <span>Agregar a mi lista</span>
+            <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+            <span>Agregar al carrito</span>
           </button>
         </div>
       </div>
@@ -564,8 +560,8 @@
         </div>
         <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
           <button onclick="addToList('Reloj Fossil Neutra', 489, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-            <span class="material-symbols-outlined text-sm">bookmark_add</span>
-            <span>Agregar a mi lista</span>
+            <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+            <span>Agregar al carrito</span>
           </button>
         </div>
       </div>
@@ -733,8 +729,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Dior Sauvage 100ml', 529, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -766,8 +762,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('The Ordinary Niacinamide', 79, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -799,8 +795,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Stanley Quencher 40oz', 249, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -832,8 +828,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('CeraVe Cleanser 562ml', 98, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -890,8 +886,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('iPhone 16 Pro Max 256GB', 4890, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -923,8 +919,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('MacBook Air 15 M3', 5490, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -956,8 +952,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Rare Beauty Blush Hope', 145, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -989,8 +985,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Apple Watch Series 10', 1890, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -1043,8 +1039,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Lattafa Asad 100ml', 179, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -1076,8 +1072,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Afnan 9PM 100ml', 189, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -1109,8 +1105,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Sol de Janeiro Cheirosa 68', 169, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -1142,8 +1138,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Creed Aventus 100ml', 1290, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -1196,8 +1192,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Gisou Hair Oil 100ml', 295, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -1229,8 +1225,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Sol de Janeiro Bum Bum', 210, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -1262,8 +1258,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Fenty Gloss Bomb', 125, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -1295,8 +1291,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Laneige Lip Mask Berry', 115, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -1349,8 +1345,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Echo Dot 5ta Gen', 249, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -1382,8 +1378,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Google Nest Hub 2', 390, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -1415,8 +1411,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Bose SoundLink Flex', 620, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -1448,8 +1444,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Apple HomePod mini', 480, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -1502,8 +1498,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Fossil Neutra Brown', 489, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -1535,8 +1531,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Michael Kors Pyper', 540, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -1600,8 +1596,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('Casio Vintage Gold', 220, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         </div>
@@ -2311,9 +2307,9 @@
       <span>Pedir Link</span>
     </a>
     <button onclick="toggleListDrawer()" class="flex flex-col items-center gap-0.5 py-1 px-2.5 hover:text-amber-500 active:scale-90 transition-all relative">
-      <span class="material-symbols-outlined text-xl">bookmark</span>
+      <span class="material-symbols-outlined text-xl">shopping_cart</span>
       <span id="mobile-list-count" class="absolute top-0 right-1.5 bg-amber-500 text-slate-950 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">0</span>
-      <span>Mi Lista</span>
+      <span>Carrito</span>
     </button>
     <a href="https://wa.me/51960759244?text=Hola,%20deseo%20hacerte%20una%20consulta%20sobre%20el%20pr%C3%B3ximo%20viaje" target="_blank" class="flex flex-col items-center gap-0.5 py-1 px-2.5 text-emerald-500 hover:text-emerald-400 active:scale-90 transition-all">
       <span class="material-symbols-outlined text-xl">chat</span>
@@ -2330,7 +2326,7 @@
 
 
   <!-- ========================================================================= -->
-  <!-- DRAWER "MI LISTA" (Physics-based ease-drawer)                             -->
+  <!-- DRAWER "CARRITO DE COMPRAS" (Physics-based ease-drawer)                   -->
   <!-- ========================================================================= -->
   <div id="list-drawer-overlay" onclick="toggleListDrawer()" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 opacity-0 pointer-events-none transition-opacity duration-300"></div>
 
@@ -2338,8 +2334,8 @@
     
     <div class="p-5 border-b border-slate-200 dark:border-darkBorder flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <span class="material-symbols-outlined text-amber-500 text-xl">bookmark</span>
-        <h3 class="text-sm font-black text-slate-900 dark:text-white font-display">Mi lista de pedidos</h3>
+        <span class="material-symbols-outlined text-amber-500 text-xl">shopping_cart</span>
+        <h3 class="text-sm font-black text-slate-900 dark:text-white font-display">Carrito de compras</h3>
       </div>
       <button onclick="toggleListDrawer()" class="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl transition-colors">
         <span class="material-symbols-outlined text-lg">close</span>
@@ -2348,8 +2344,8 @@
 
     <div class="p-5 flex-1 overflow-y-auto space-y-3" id="list-items-container">
       <div class="text-center py-16 text-slate-400 space-y-2" id="list-empty-state">
-        <span class="material-symbols-outlined text-4xl">bookmark_border</span>
-        <p class="text-xs font-bold">Tu lista está vacía</p>
+        <span class="material-symbols-outlined text-4xl">remove_shopping_cart</span>
+        <p class="text-xs font-bold">Tu carrito está vacío</p>
         <p class="text-[11px]">Agrega productos del catálogo para separarlos en mi próximo viaje o pedir entrega en Lima.</p>
       </div>
     </div>
@@ -2605,7 +2601,7 @@
       }, 3200);
     }
 
-    // 4. "MI LISTA" DE PEDIDOS
+    // 4. CARRITO DE PEDIDOS
     let myList = [];
 
     function toggleListDrawer() {
@@ -2636,7 +2632,7 @@
         const originalHTML = btn.innerHTML;
         const originalBg = btn.className;
 
-        btn.innerHTML = `<span class="material-symbols-outlined text-sm align-middle">check_circle</span> <span class="align-middle">¡Agregado a mi lista!</span>`;
+        btn.innerHTML = `<span class="material-symbols-outlined text-sm align-middle">check_circle</span> <span class="align-middle">¡Agregado al carrito!</span>`;
         btn.classList.add('bg-emerald-500', 'text-white', 'scale-95');
 
         setTimeout(() => btn.classList.remove('scale-95'), 120);
@@ -2655,7 +2651,7 @@
         setTimeout(() => badge.classList.remove('scale-125'), 220);
       }
 
-      showToast(title, `S/ ${price.toFixed(2)} • Agregado a tu lista`);
+      showToast(title, `S/ ${price.toFixed(2)} • Agregado al carrito`);
     }
 
     function removeFromList(index) {
@@ -2767,7 +2763,7 @@
         msg += `*Fecha:* ${encodeURIComponent(ticketData.fecha)}%0A%0A`;
         
         if (ticketData.items && ticketData.items.length > 0 && ticketData.items[0].title) {
-          msg += `*Artículos de mi lista:*%0A`;
+          msg += `*Artículos de mi carrito:*%0A`;
           ticketData.items.forEach(i => {
             msg += `- ${encodeURIComponent(i.title)} (S/ ${parseFloat(i.price).toFixed(2)})%0A`;
           });
@@ -3341,8 +3337,8 @@
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button onclick="addToList('${p.name.replace(/'/g, "\\'")}', ${p.price}, this)" class="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-sm">bookmark_add</span>
-              <span>Agregar a mi lista</span>
+              <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+              <span>Agregar al carrito</span>
             </button>
           </div>
         `;

@@ -11,12 +11,11 @@ Tienes varias opciones sencillas para trabajar con esta web:
 ### Opción 1: Abrir directamente en el navegador (Sin instalar nada)
 Haz doble clic sobre el archivo [index.html](file:///d:/TIENDA%20USA/index.html) en el Explorador de Windows o ábrelo directamente en Google Chrome / Microsoft Edge.
 
-### Opción 2: Iniciar servidor local con npm
-Abre la terminal en esta carpeta (`d:\TIENDA USA`) y ejecuta:
-```bash
-npm start
-```
-Luego abre tu navegador en [http://localhost:3000](http://localhost:3000).
+### Despliegue en Producción (Vercel & Supabase)
+El proyecto está configurado para desplegar automáticamente en Vercel conectado a la base de datos PostgreSQL de Supabase. Cada push a la rama `main` en GitHub (`storebass`) compila y actualiza la tienda en vivo instantáneamente.
+
+- **Tienda Web Oficial:** Acceso público a través de tu URL de Vercel.
+- **Acceso Administrativo:** `/admin.html` (Protegido por login: `admin` / `adminpj2026`).
 
 ---
 

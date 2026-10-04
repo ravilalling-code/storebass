@@ -52,10 +52,11 @@ npx vercel --prod
 
 Puedes vincular Supabase directamente desde el panel administrativo:
 
-1. Entra a tu panel administrativo:
-   - Local: `http://localhost:3000/admin`
-   - En Vercel: `https://tu-proyecto.vercel.app/admin`
-2. Inicia sesión como **Johan Tovar** (`johan.tovar@storebass.pe` / clave demo o botón de 1-Click).
+1. Entra a tu panel administrativo en Vercel:
+   - En Vercel: `https://storebass.vercel.app/admin.html` (o tu dominio asignado por Vercel)
+2. Inicia sesión en modo administrador:
+   - Usuario: `admin`
+   - Contraseña: `adminpj2026`
 3. En el menú lateral, haz clic en **Ajustes & Viajes**.
 4. Desplázate a la tarjeta **"Base de Datos Cloud (Supabase PostgreSQL)"**:
    - Pega tu **Supabase Project URL**.
