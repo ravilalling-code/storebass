@@ -2,7 +2,7 @@
 <html lang="es" class="scroll-smooth">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>STORE BASS | Gestión</title>
   <meta name="description" content="Portal de gestión central para STORE BASS.">
   
@@ -53,6 +53,19 @@
     }
   </script>
   <style>
+    html {
+      -webkit-tap-highlight-color: transparent;
+    }
+    @media (pointer: coarse) {
+      input, textarea, select {
+        font-size: 16px !important;
+      }
+    }
+    button, a, [role="button"] {
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
     .glass-nav {
       background: rgba(17, 24, 39, 0.85);
       backdrop-filter: blur(12px);
@@ -229,11 +242,11 @@
     <main class="flex-1 flex flex-col min-w-0 bg-slate-950 overflow-y-auto custom-scroll">
       
       <!-- Topbar Header -->
-      <header class="h-20 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-6 sm:px-8 flex items-center justify-between sticky top-0 z-30">
-        <div class="flex items-center gap-4">
+      <header class="h-16 sm:h-20 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30">
+        <div class="flex items-center gap-3">
           <div class="md:hidden flex items-center gap-2">
             <img src="Storebass.jpg" onerror="this.src='StoreBass/Storebass.jpg'" class="w-8 h-8 rounded-lg object-cover">
-            <span class="font-extrabold text-white">STORE <span class="text-amber-500">BASS</span></span>
+            <span class="font-extrabold text-white text-sm">STORE <span class="text-amber-500">BASS</span></span>
           </div>
           <div class="hidden sm:block">
             <h2 id="topbar-title" class="text-lg font-bold text-white">Dashboard General & Métricas</h2>
@@ -241,7 +254,7 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2.5 sm:gap-3">
           <!-- Tipo de cambio rápido -->
           <div class="hidden lg:flex items-center gap-2 bg-slate-800/80 border border-slate-700 px-3 py-1.5 rounded-xl text-xs">
             <span class="text-slate-400">USD/PEN:</span>
@@ -251,25 +264,14 @@
 
           <!-- Botón Notificaciones -->
           <div class="relative">
-            <button onclick="showToast('Tienes 3 nuevas cotizaciones de enlaces de USA')" class="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-600 relative">
-              <span class="material-symbols-outlined text-xl">notifications</span>
-              <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-amber-500 rounded-full animate-ping"></span>
+            <button onclick="showToast('Tienes cotizaciones de enlaces de USA pendientes')" class="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-600 relative">
+              <span class="material-symbols-outlined text-lg sm:text-xl">notifications</span>
               <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-amber-500 rounded-full"></span>
             </button>
           </div>
 
-          <!-- Selector de Modo Móvil de Tabs -->
-          <select onchange="switchTab(this.value)" class="md:hidden bg-slate-800 border border-slate-700 text-white text-xs rounded-xl px-3 py-2">
-            <option value="dashboard">Dashboard</option>
-            <option value="catalog">Catálogo & Precios</option>
-            <option value="shipping">Monitoreo Envíos</option>
-            <option value="crm">Clientes & Leads</option>
-            <option value="marketing">Publicidad Banners</option>
-            <option value="settings">Ajustes</option>
-          </select>
-
           <!-- Botón Tienda -->
-          <a href="index.html" class="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20">
+          <a href="index.html" class="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 active:scale-95 transition-all">
             <span class="material-symbols-outlined text-sm">storefront</span>
             <span class="hidden sm:inline">Ir a la Tienda</span>
           </a>
@@ -277,7 +279,7 @@
       </header>
 
       <!-- Vistas de Módulos -->
-      <div class="p-6 sm:p-8 space-y-8 flex-1">
+      <div class="p-3.5 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 flex-1 pb-24 md:pb-8">
 
         <!-- ========================================== -->
         <!-- TAB 1: DASHBOARD & MÉTRICAS               -->
@@ -427,7 +429,7 @@
           <!-- Tabla de Productos -->
           <div class="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
             <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs text-slate-300">
+              <table class="w-full min-w-[640px] text-left text-xs text-slate-300">
                 <thead class="bg-slate-850 border-b border-slate-800 text-[11px] uppercase font-bold text-slate-400 tracking-wider">
                   <tr>
                     <th class="p-4">Producto</th>
@@ -469,7 +471,7 @@
           <!-- Tabla de Categorías -->
           <div class="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
             <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs text-slate-300">
+              <table class="w-full min-w-[600px] text-left text-xs text-slate-300">
                 <thead class="bg-slate-850 border-b border-slate-800 text-[11px] uppercase font-bold text-slate-400 tracking-wider">
                   <tr>
                     <th class="p-4">Categoría</th>
@@ -507,7 +509,7 @@
           <!-- Tabla de Guías -->
           <div class="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
             <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs text-slate-300">
+              <table class="w-full min-w-[640px] text-left text-xs text-slate-300">
                 <thead class="bg-slate-850 border-b border-slate-800 text-[11px] uppercase font-bold text-slate-400 tracking-wider">
                   <tr>
                     <th class="p-4">N° de Guía</th>
@@ -563,7 +565,7 @@
           <!-- Tabla de Tickets Correlativos -->
           <div class="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
             <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs text-slate-300">
+              <table class="w-full min-w-[700px] text-left text-xs text-slate-300">
                 <thead class="bg-slate-850 border-b border-slate-800 text-[11px] uppercase font-bold text-slate-400 tracking-wider">
                   <tr>
                     <th class="p-4">N° Ticket Correlativo</th>
@@ -763,6 +765,34 @@
 
       </div>
     </main>
+
+    <!-- BARRA INFERIOR MÓVIL DEL CRM (md:hidden) -->
+    <nav class="md:hidden fixed bottom-0 left-0 w-full z-40 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 px-1 pt-1 pb-[max(6px,env(safe-area-inset-bottom))] shadow-2xl flex items-center justify-around text-[10px] font-bold">
+      <button onclick="switchTab('dashboard')" id="mobile-tab-btn-dashboard" class="mobile-tab-btn flex flex-col items-center gap-0.5 py-1 px-1.5 text-amber-400 active:scale-90 transition-all">
+        <span class="material-symbols-outlined text-xl">dashboard</span>
+        <span>Inicio</span>
+      </button>
+      <button onclick="switchTab('catalog')" id="mobile-tab-btn-catalog" class="mobile-tab-btn flex flex-col items-center gap-0.5 py-1 px-1.5 text-slate-400 active:scale-90 transition-all">
+        <span class="material-symbols-outlined text-xl">inventory_2</span>
+        <span>Catálogo</span>
+      </button>
+      <button onclick="switchTab('categories')" id="mobile-tab-btn-categories" class="mobile-tab-btn flex flex-col items-center gap-0.5 py-1 px-1.5 text-slate-400 active:scale-90 transition-all">
+        <span class="material-symbols-outlined text-xl">category</span>
+        <span>Categorías</span>
+      </button>
+      <button onclick="switchTab('crm')" id="mobile-tab-btn-crm" class="mobile-tab-btn flex flex-col items-center gap-0.5 py-1 px-1.5 text-slate-400 active:scale-90 transition-all">
+        <span class="material-symbols-outlined text-xl">receipt_long</span>
+        <span>Tickets</span>
+      </button>
+      <button onclick="switchTab('marketing')" id="mobile-tab-btn-marketing" class="mobile-tab-btn flex flex-col items-center gap-0.5 py-1 px-1.5 text-slate-400 active:scale-90 transition-all">
+        <span class="material-symbols-outlined text-xl">campaign</span>
+        <span>Banners</span>
+      </button>
+      <button onclick="switchTab('settings')" id="mobile-tab-btn-settings" class="mobile-tab-btn flex flex-col items-center gap-0.5 py-1 px-1.5 text-slate-400 active:scale-90 transition-all">
+        <span class="material-symbols-outlined text-xl">tune</span>
+        <span>Ajustes</span>
+      </button>
+    </nav>
   </div>
 
 
@@ -1336,6 +1366,17 @@
       if (activeBtn) {
         activeBtn.classList.add('bg-amber-500/10', 'text-amber-400', 'border', 'border-amber-500/20');
         activeBtn.classList.remove('text-slate-400');
+      }
+
+      // Sincronizar barra móvil
+      document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
+        btn.classList.remove('text-amber-400');
+        btn.classList.add('text-slate-400');
+      });
+      const activeMobileBtn = document.getElementById(`mobile-tab-btn-${tabId}`);
+      if (activeMobileBtn) {
+        activeMobileBtn.classList.remove('text-slate-400');
+        activeMobileBtn.classList.add('text-amber-400');
       }
 
       // Títulos del Topbar

@@ -2,7 +2,7 @@
 <html lang="es" class="scroll-smooth">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>STORE BASS | Comprador Personal en USA • Traigo tus compras a Perú</title>
   <meta name="description" content="STORE BASS: Voy a USA, compro tus productos favoritos y te los traigo a Perú. Catálogo original, precio final en Soles antes de pagar y fecha exacta de llegada en mi regreso.">
 
@@ -66,6 +66,21 @@
       --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
+    html {
+      -webkit-tap-highlight-color: transparent;
+      scroll-behavior: smooth;
+    }
+
+    @media (pointer: coarse) {
+      input, textarea, select {
+        font-size: 16px !important;
+      }
+    }
+
+    button, a, [role="button"], input[type="submit"] {
+      touch-action: manipulation;
+    }
+
     button:active, a.btn-active:active {
       transform: scale(0.97);
       transition: transform 70ms var(--ease-out);
@@ -112,7 +127,7 @@
   </style>
 </head>
 
-<body class="bg-slate-50 dark:bg-darkBg text-slate-800 dark:text-slate-100 font-sans antialiased min-h-screen selection:bg-amber-500 selection:text-slate-950 transition-colors duration-200">
+<body class="bg-slate-50 dark:bg-darkBg text-slate-800 dark:text-slate-100 font-sans antialiased min-h-screen selection:bg-amber-500 selection:text-slate-950 transition-colors duration-200 pb-20 sm:pb-0">
 
   <!-- ========================================================================= -->
   <!-- 1. BARRA SUPERIOR (Rotador dinámico y editable del viaje)                  -->
@@ -134,7 +149,7 @@
         </a>
         <a href="admin.html" class="text-slate-300 hover:text-amber-400 transition-colors flex items-center gap-1 font-bold">
           <span class="material-symbols-outlined text-sm">lock</span>
-          <span class="hidden md:inline">Panel Administrador</span>
+          <span class="hidden md:inline">Acceso Interno</span>
         </a>
       </div>
 
@@ -205,7 +220,7 @@
               </div>
               <a href="admin.html" class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors">
                 <span class="material-symbols-outlined text-base">admin_panel_settings</span>
-                <span>Panel de Dueño / CRM</span>
+                <span>Acceso de Gestión</span>
               </a>
               <a href="#seguimiento" class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <span class="material-symbols-outlined text-base">travel_explore</span>
@@ -270,6 +285,18 @@
             <span>Pide por link</span>
           </a>
         </div>
+      </div>
+
+      <!-- Buscador para Dispositivos Móviles (< md) -->
+      <div class="py-2.5 md:hidden border-t border-slate-200/60 dark:border-darkBorder/60">
+        <form onsubmit="handleGlobalSearch(event)" class="relative">
+          <input type="text" id="mobile-search-input" oninput="showSearchSuggestions(this.value)" placeholder="Buscar producto o marca de USA..."
+            class="w-full bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 rounded-xl pl-9 pr-16 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors">
+          <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-base pointer-events-none">search</span>
+          <button type="submit" class="absolute right-1 top-1/2 -translate-y-1/2 bg-amber-500 text-slate-950 px-2.5 py-1 rounded-lg text-[10px] font-bold">
+            Buscar
+          </button>
+        </form>
       </div>
 
     </div>
@@ -2300,19 +2327,37 @@
   <!-- 13. ELEMENTOS FLOTANTES                                                   -->
   <!-- ========================================================================= -->
   
-  <!-- Botón Fijo WhatsApp: "Habla conmigo" (Abre chat con 960759244) -->
+  <!-- BARRA DE NAVEGACIÓN MÓVIL FIJA (App Native Bottom Bar) -->
+  <nav class="sm:hidden fixed bottom-0 left-0 w-full z-40 bg-white/95 dark:bg-darkCard/95 backdrop-blur-lg border-t border-slate-200/90 dark:border-darkBorder px-2 pt-1.5 pb-[max(8px,env(safe-area-inset-bottom))] shadow-2xl flex items-center justify-around text-[10px] font-bold text-slate-600 dark:text-slate-400">
+    <a href="#" class="flex flex-col items-center gap-0.5 py-1 px-2.5 text-amber-500 active:scale-90 transition-all">
+      <span class="material-symbols-outlined text-xl">home</span>
+      <span>Inicio</span>
+    </a>
+    <a href="#catalogo" class="flex flex-col items-center gap-0.5 py-1 px-2.5 hover:text-amber-500 active:scale-90 transition-all">
+      <span class="material-symbols-outlined text-xl">storefront</span>
+      <span>Catálogo</span>
+    </a>
+    <a href="#pedir-link" class="flex flex-col items-center gap-0.5 py-1 px-2.5 hover:text-amber-500 active:scale-90 transition-all">
+      <span class="material-symbols-outlined text-xl">add_link</span>
+      <span>Pedir Link</span>
+    </a>
+    <button onclick="toggleListDrawer()" class="flex flex-col items-center gap-0.5 py-1 px-2.5 hover:text-amber-500 active:scale-90 transition-all relative">
+      <span class="material-symbols-outlined text-xl">bookmark</span>
+      <span id="mobile-list-count" class="absolute top-0 right-1.5 bg-amber-500 text-slate-950 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">0</span>
+      <span>Mi Lista</span>
+    </button>
+    <a href="https://wa.me/51960759244?text=Hola,%20deseo%20hacerte%20una%20consulta%20sobre%20el%20pr%C3%B3ximo%20viaje" target="_blank" class="flex flex-col items-center gap-0.5 py-1 px-2.5 text-emerald-500 hover:text-emerald-400 active:scale-90 transition-all">
+      <span class="material-symbols-outlined text-xl">chat</span>
+      <span>WhatsApp</span>
+    </a>
+  </nav>
+
+  <!-- Botón Fijo WhatsApp sólo en Escritorio/Tablet (sm:flex) -->
   <a href="https://wa.me/51960759244?text=Hola,%20deseo%20hacerte%20una%20consulta%20sobre%20el%20pr%C3%B3ximo%20viaje" target="_blank"
-    class="fixed bottom-6 right-6 z-40 bg-emerald-500 hover:bg-emerald-400 text-white font-black px-4 py-3 rounded-full shadow-2xl flex items-center gap-2 transform hover:scale-105 active:scale-95 transition-all">
+    class="hidden sm:flex fixed bottom-6 right-6 z-40 bg-emerald-500 hover:bg-emerald-400 text-white font-black px-4 py-3 rounded-full shadow-2xl items-center gap-2 transform hover:scale-105 active:scale-95 transition-all">
     <span class="material-symbols-outlined text-2xl">chat</span>
     <span class="text-xs">Habla conmigo</span>
   </a>
-
-  <!-- Botón Móvil "Mi lista" fijo abajo a la izquierda -->
-  <button onclick="toggleListDrawer()"
-    class="sm:hidden fixed bottom-6 left-6 z-40 bg-slate-950 dark:bg-white text-white dark:text-slate-950 font-black px-4 py-3 rounded-full shadow-2xl flex items-center gap-2 active:scale-95 transition-all">
-    <span class="material-symbols-outlined text-xl text-amber-400">bookmark</span>
-    <span class="text-xs">Mi lista (<span id="mobile-list-count">0</span>)</span>
-  </button>
 
 
   <!-- ========================================================================= -->
