@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>STORE BASS | Panel Administrador & CRM E-commerce</title>
-  <meta name="description" content="Portal de gestión y CRM integral para STORE BASS: Catálogo, Precios, Monitoreo de Envíos, Clientes y Publicidad.">
+  <title>STORE BASS | Gestión</title>
+  <meta name="description" content="Portal de gestión central para STORE BASS.">
   
   <!-- Fonts: Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -75,69 +75,47 @@
   <!-- 1. PANTALLA DE INICIO DE SESIÓN (LOGIN)    -->
   <!-- ========================================== -->
   <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md px-4">
-    <div class="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl shadow-black/80">
+    <div class="relative w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl shadow-black/80">
       
       <!-- Halo decorativo -->
-      <div class="absolute -top-12 -left-12 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
-      <div class="absolute -bottom-12 -right-12 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -top-12 -left-12 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-12 -right-12 w-40 h-40 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
 
-      <!-- Encabezado Login -->
-      <div class="text-center mb-8 relative">
-        <div class="inline-flex items-center justify-center p-1 rounded-2xl bg-gradient-to-br from-amber-500/30 to-slate-800 border border-amber-500/40 mb-4 shadow-lg shadow-amber-500/10">
-          <img src="Storebass.jpg" onerror="this.src='StoreBass/Storebass.jpg'" alt="STORE BASS Logo" class="w-16 h-16 rounded-xl object-cover">
+      <!-- Logo Header Limpio -->
+      <div class="text-center mb-7 relative">
+        <div class="inline-flex items-center justify-center p-1 rounded-2xl bg-slate-800 border border-slate-700/80 mb-3 shadow-xl">
+          <img src="Storebass.jpg" onerror="this.src='StoreBass/Storebass.jpg'" alt="STORE BASS Logo" class="w-20 h-20 rounded-xl object-cover">
         </div>
         <h1 class="text-2xl font-black tracking-tight text-white">STORE <span class="text-amber-500">BASS</span></h1>
-        <p class="text-xs uppercase font-extrabold tracking-widest text-slate-400 mt-1">Portal CRM & Administración Central</p>
-        <span class="inline-block mt-3 px-3 py-1 bg-amber-500/10 text-amber-400 text-xs font-bold rounded-full border border-amber-500/20">
-          🔒 Acceso Seguro Restringido
-        </span>
       </div>
 
-      <!-- Formulario Login -->
+      <!-- Formulario Login Modo Administrador -->
       <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
         <div>
-          <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Usuario / Correo Administrativo</label>
+          <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Usuario</label>
           <div class="relative">
-            <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xl">admin_panel_settings</span>
-            <input type="email" id="login-email" value="johan.tovar@storebass.pe" required
-              class="w-full bg-slate-800/80 border border-slate-700 text-white rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors">
+            <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-lg">person</span>
+            <input type="text" id="login-user" required placeholder="admin" autocomplete="username"
+              class="w-full bg-slate-800/80 border border-slate-700 text-white rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors">
           </div>
         </div>
 
         <div>
-          <div class="flex items-center justify-between mb-2">
-            <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">Contraseña</label>
-            <span class="text-xs text-amber-400/80 hover:text-amber-400 cursor-pointer">¿Olvidaste clave?</span>
-          </div>
+          <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Contraseña</label>
           <div class="relative">
-            <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xl">lock</span>
-            <input type="password" id="login-password" value="admin2026" required
-              class="w-full bg-slate-800/80 border border-slate-700 text-white rounded-xl pl-11 pr-11 py-3 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors">
+            <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-lg">lock</span>
+            <input type="password" id="login-password" required placeholder="••••••••" autocomplete="current-password"
+              class="w-full bg-slate-800/80 border border-slate-700 text-white rounded-xl pl-10 pr-10 py-3 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors">
             <button type="button" onclick="togglePassVisibility()" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
               <span class="material-symbols-outlined text-lg" id="pass-icon">visibility</span>
             </button>
           </div>
         </div>
 
-        <div class="flex items-center justify-between text-xs text-slate-400 pt-1">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" id="remember-me" checked class="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0">
-            <span>Recordar sesión</span>
-          </label>
-          <span class="text-slate-500">v2.4 Pro</span>
-        </div>
-
         <button type="submit"
-          class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-3.5 px-4 rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]">
+          class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-3.5 px-4 rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.01] active:scale-[0.98]">
           <span class="material-symbols-outlined text-xl">login</span>
-          <span>Iniciar Sesión en el CRM</span>
-        </button>
-
-        <!-- Botón Demo 1-Click -->
-        <button type="button" onclick="quickDemoLogin()"
-          class="w-full bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 text-slate-300 font-semibold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors">
-          <span class="material-symbols-outlined text-amber-400 text-base">bolt</span>
-          <span>Acceso Rápido Demo (1-Click)</span>
+          <span>Ingresar</span>
         </button>
       </form>
 
@@ -165,7 +143,7 @@
           <img src="Storebass.jpg" onerror="this.src='StoreBass/Storebass.jpg'" alt="STORE BASS Logo" class="w-10 h-10 rounded-xl object-cover border border-amber-500/40">
           <div>
             <div class="text-base font-black text-white leading-tight">STORE <span class="text-amber-500">BASS</span></div>
-            <div class="text-[10px] uppercase font-bold text-slate-400">Panel Administrador</div>
+            <div class="text-[10px] uppercase font-bold text-slate-400">Gestión Central</div>
           </div>
         </div>
 
@@ -780,67 +758,6 @@
                 </div>
               </div>
             </div>
-
-            <!-- Tarjeta 3: Base de Datos Supabase & Despliegue en Vercel -->
-            <div class="lg:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-5">
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-xl">database</span>
-                  </div>
-                  <div>
-                    <h3 class="text-base font-bold text-white flex items-center gap-2">
-                      <span>Base de Datos Cloud (Supabase PostgreSQL)</span>
-                      <span id="supabase-status-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        Modo Local (LocalStorage)
-                      </span>
-                    </h3>
-                    <p class="text-xs text-slate-400">Sincronización en tiempo real para producción alojado en Vercel</p>
-                  </div>
-                </div>
-                <a href="supabase_schema.sql" target="_blank" download="supabase_schema.sql"
-                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-colors">
-                  <span class="material-symbols-outlined text-sm text-amber-400">download</span>
-                  <span>Descargar Schema SQL</span>
-                </a>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Supabase Project URL</label>
-                  <input type="url" id="setting-supabase-url" placeholder="https://tu-proyecto.supabase.co"
-                    class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-xs font-mono focus:border-amber-500">
-                  <p class="text-[10px] text-slate-500 mt-1">Copia la URL desde Settings ➔ API en tu panel de Supabase</p>
-                </div>
-
-                <div>
-                  <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Supabase Anon Public Key</label>
-                  <input type="password" id="setting-supabase-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-                    class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-xs font-mono focus:border-amber-500">
-                  <p class="text-[10px] text-slate-500 mt-1">Clave anónima pública del proyecto (Project API keys ➔ anon public)</p>
-                </div>
-              </div>
-
-              <div class="flex flex-wrap items-center gap-3 pt-2">
-                <button onclick="testAndSaveSupabaseConnection()"
-                  class="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all">
-                  <span class="material-symbols-outlined text-base">cloud_sync</span>
-                  <span>Probar y Conectar Supabase</span>
-                </button>
-                <button onclick="syncLocalDataToSupabase()"
-                  class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs flex items-center gap-1.5 transition-colors">
-                  <span class="material-symbols-outlined text-base text-amber-400">upload</span>
-                  <span>Migrar Datos Locales a Supabase</span>
-                </button>
-                <button onclick="disconnectSupabase()"
-                  class="text-rose-400 hover:text-rose-300 py-2 px-3 text-xs font-semibold">
-                  Desconectar
-                </button>
-              </div>
-
-              <div id="supabase-test-result" class="hidden text-xs p-3 rounded-xl border"></div>
-            </div>
-
           </div>
         </div>
 
@@ -1369,22 +1286,19 @@
 
     function handleLogin(e) {
       if (e) e.preventDefault();
-      const email = document.getElementById('login-email').value;
-      const pass = document.getElementById('login-password').value;
+      const userEl = document.getElementById('login-user');
+      const passEl = document.getElementById('login-password');
+      const user = userEl ? userEl.value.trim() : '';
+      const pass = passEl ? passEl.value.trim() : '';
 
-      if (email.trim() && pass.trim()) {
+      if (user === 'admin' && pass === 'adminpj2026') {
         sessionStorage.setItem('storebass_admin_auth', 'true');
         document.getElementById('login-screen').classList.add('hidden');
-        showToast('¡Bienvenido, Johan Tovar!');
+        showToast('Bienvenido, Administrador');
         refreshAllData();
+      } else {
+        showToast('Usuario o contraseña incorrectos');
       }
-    }
-
-    function quickDemoLogin() {
-      sessionStorage.setItem('storebass_admin_auth', 'true');
-      document.getElementById('login-screen').classList.add('hidden');
-      showToast('Acceso Administrador Autorizado (Johan Tovar)');
-      refreshAllData();
     }
 
     function logoutAdmin() {
