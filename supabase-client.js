@@ -15,15 +15,18 @@
     }
 
     getCredentials() {
-      // 1. Verificar variables globales inyectadas (Vercel / Window)
+      // 1. URL detectada de tu proyecto Supabase
+      const defaultUrl = 'https://zaokqljaadbidnamklvb.supabase.co';
+
+      // 2. Verificar variables globales inyectadas (Vercel / Window)
       const envUrl = window.STOREBASS_SUPABASE_URL || (window.process && window.process.env && window.process.env.SUPABASE_URL);
       const envKey = window.STOREBASS_SUPABASE_KEY || (window.process && window.process.env && window.process.env.SUPABASE_ANON_KEY);
 
-      // 2. Verificar configuración en LocalStorage guardada por Johan Tovar en el CRM
+      // 3. Verificar configuración en LocalStorage guardada por Johan Tovar en el CRM
       const storedUrl = localStorage.getItem('storebass_supabase_url');
       const storedKey = localStorage.getItem('storebass_supabase_key');
 
-      const url = storedUrl || envUrl || '';
+      const url = storedUrl || envUrl || defaultUrl;
       const key = storedKey || envKey || '';
 
       return { url: url.trim(), key: key.trim() };
