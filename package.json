@@ -1,0 +1,19 @@
+{
+  "name": "store-bass",
+  "version": "1.0.0",
+  "description": "STORE BASS - Shopper & Courier: Tienda Online peruana de artículos originales importados de USA",
+  "scripts": {
+    "start": "npx serve . -p 3000",
+    "dev": "npx serve . -p 3000"
+  },
+  "keywords": [
+    "landing-page",
+    "ecommerce",
+    "peru",
+    "importaciones",
+    "storebass",
+    "shopper-courier"
+  ],
+  "author": "STORE BASS Perú",
+  "license": "ISC"
+}
