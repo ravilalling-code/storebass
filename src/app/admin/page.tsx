@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { INITIAL_PRODUCTS } from '@/data/initialCatalog';
 import { INITIAL_TRENDS } from '@/components/home/TrendsCarousel';
 import { ImageUpload } from '@/components/ui/ImageUpload';
+import { ProductImageManager, type ProductImageDraft } from '@/components/admin/ProductImageManager';
 import { AdBanner } from '@/lib/types';
 import { useToast } from '@/context/CartContext';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -38,10 +39,12 @@ export default function AdminPage() {
     description: '',
     category: 'Perfumes',
     delivery: 'Llega el 29 de Octubre',
-    regularPrice: 0,
     price: 0,
+    offerActive: false,
+    offerPrice: 0,
     img: '',
   });
+  const [productImages, setProductImages] = useState<ProductImageDraft[]>([]);
 
   // Categories State
   const [categories, setCategories] = useState([
@@ -279,8 +282,8 @@ export default function AdminPage() {
   // Product CRUD
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prodForm.name || prodForm.price <= 0) {
-      showToast('Campos incompletos', 'Ingresa nombre y precio válido');
+    if (!prodForm.name || prodForm.price <= 0 || (prodForm.offerActive && (prodForm.offerPrice <= 0 || prodForm.offerPrice >= prodForm.price))) {
+      showToast('Revisa los precios', prodForm.offerActive ? 'El precio de oferta debe ser mayor a 0 y menor que el precio regular' : 'Ingresa nombre y precio regular válido');
       return;
     }
 
@@ -289,13 +292,23 @@ export default function AdminPage() {
     setSaving(true);
     try {
       const values = { name: prodForm.name.trim(), description: prodForm.description.trim(),
-        category: prodForm.category, delivery: prodForm.delivery, regular_price: prodForm.regularPrice,
-        price: prodForm.price, img: prodForm.img, updated_at: new Date().toISOString() };
+        category: prodForm.category, delivery: prodForm.delivery, regular_price: prodForm.price,
+        price: prodForm.price, offer_active: prodForm.offerActive, offer_price: prodForm.offerActive ? prodForm.offerPrice : null,
+        img: productImages[0]?.url || prodForm.img || '', updated_at: new Date().toISOString() };
       const query = editingProductId
         ? supabase.from('products').update(values).eq('id', editingProductId)
         : supabase.from('products').insert(values);
       const { data, error } = await query.select().single();
       if (error) throw error;
+      if (data?.id) {
+        const { error: imageDeleteError } = await supabase.from('product_images').delete().eq('product_id', data.id);
+        if (imageDeleteError) throw imageDeleteError;
+        if (productImages.length) {
+          const rows = productImages.map((image, index) => ({ product_id: data.id, url: image.url, sort_order: index, is_primary: index === 0 }));
+          const { error: imageInsertError } = await supabase.from('product_images').insert(rows);
+          if (imageInsertError) throw imageInsertError;
+        }
+      }
       setProducts(previous => editingProductId ? previous.map(p => p.id === editingProductId ? data : p) : [data, ...previous]);
       window.dispatchEvent(new Event('storebass_products_updated'));
       setProductModalOpen(false);
@@ -331,10 +344,18 @@ export default function AdminPage() {
       description: p.description || '',
       category: p.category,
       delivery: p.delivery,
-      regularPrice: p.regular_price ?? p.regularPrice ?? p.price,
-      price: p.price,
-      img: p.img,
+      price: p.regular_price ?? p.regularPrice ?? p.price,
+      offerActive: !!p.offer_active,
+      offerPrice: p.offer_price ?? 0,
+      img: p.img || '',
     });
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      void supabase.from('product_images').select('id,url,sort_order,is_primary').eq('product_id', p.id).order('sort_order').then(({ data }) => {
+        const loaded = (data || []).map((image: any, index: number) => ({ id: image.id, url: image.url, sort_order: image.sort_order ?? index, is_primary: !!image.is_primary }));
+        setProductImages(loaded.length ? loaded : (p.img ? [{ url: p.img, sort_order: 0, is_primary: true }] : []));
+      });
+    } else setProductImages(p.img ? [{ url: p.img, sort_order: 0, is_primary: true }] : []);
     setProductModalOpen(true);
   };
 
@@ -1012,10 +1033,12 @@ export default function AdminPage() {
                         description: '',
                         category: 'Perfumes',
                         delivery: 'Llega el 29 de Octubre',
-                        regularPrice: 0,
                         price: 0,
+                        offerActive: false,
+                        offerPrice: 0,
                         img: '',
                       });
+                      setProductImages([]);
                       setProductModalOpen(true);
                     }}
                     className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 whitespace-nowrap shadow-md shadow-amber-500/20"
@@ -1666,47 +1689,30 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
                 <div>
                   <label className="block text-slate-400 font-bold mb-1">Precio Regular (S/)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={prodForm.regularPrice}
-                    onChange={(e) =>
-                      setProdForm({ ...prodForm, regularPrice: parseFloat(e.target.value) || 0 })
-                    }
-                    className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500"
-                  />
+                  <input type="number" min="0.01" step="0.01" required value={prodForm.price}
+                    onChange={(e) => setProdForm({ ...prodForm, price: parseFloat(e.target.value) || 0 })}
+                    className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500" />
                 </div>
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Precio Oferta (S/)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={prodForm.price}
-                    onChange={(e) =>
-                      setProdForm({ ...prodForm, price: parseFloat(e.target.value) || 0 })
-                    }
-                    className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
+                <label className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/40 px-3 py-2.5 cursor-pointer">
+                  <input type="checkbox" checked={prodForm.offerActive} onChange={e => setProdForm({ ...prodForm, offerActive: e.target.checked, offerPrice: e.target.checked ? prodForm.offerPrice : 0 })} className="h-4 w-4 accent-amber-500" />
+                  <span className="font-bold text-white">Activar oferta</span>
+                </label>
               </div>
+
+              {prodForm.offerActive && <div>
+                <label className="block text-slate-400 font-bold mb-1">Precio Oferta (S/)</label>
+                <input type="number" min="0.01" step="0.01" required value={prodForm.offerPrice || ''}
+                  onChange={e => setProdForm({ ...prodForm, offerPrice: parseFloat(e.target.value) || 0 })}
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500" />
+              </div>}
 
               <div>
                 <label className="block text-slate-400 font-bold mb-1">Descripción del producto</label>
                 <textarea aria-label="Descripción del producto" value={prodForm.description} onChange={e => setProdForm({ ...prodForm, description: e.target.value })} rows={3} className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 mb-3" />
-                <ImageUpload onUpload={url => setProdForm(previous => ({ ...previous, img: url }))} onBusy={setUploading} />
-                <label className="block text-slate-400 font-bold mb-1 mt-3">URL de la Imagen</label>
-                <input
-                  type="url"
-                  required
-                  value={prodForm.img}
-                  onChange={(e) => setProdForm({ ...prodForm, img: e.target.value })}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500"
-                />
+                <ProductImageManager images={productImages} onChange={setProductImages} onBusy={setUploading} />
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
