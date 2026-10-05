@@ -18,7 +18,7 @@ export function CartDrawer() {
 
     setLoading(true);
     try {
-      await generateTicket({
+      const ticket = await generateTicket({
         cliente: customerName.trim(),
         telefono: customerPhone.trim(),
         origen: 'Web',
@@ -27,6 +27,14 @@ export function CartDrawer() {
         total,
       });
       closeCart();
+
+      // Enviar automáticamente a Johan por WhatsApp con el ticket y acceso directo al CRM
+      const ticketCode = ticket.ticket_code || ticket.ticketId;
+      const itemsList = items.map(i => `• ${i.title} — *S/ ${Number(i.price).toFixed(2)}*`).join('\n');
+      const waMsg = encodeURIComponent(
+        `🛍️ *NUEVO TICKET GENERADO — STORE BASS* 🇺🇸✈️🇵🇪\n─────────────────────────\n🎫 *TICKET CONSECUTIVO:* #${ticketCode}\n👤 *CLIENTE:* ${customerName.trim()}\n📱 *WHATSAPP:* ${customerPhone.trim()}\n📅 *FECHA:* ${ticket.fecha || ''}\n─────────────────────────\n📦 *PRODUCTOS DEL PEDIDO:*\n${itemsList}\n\n💰 *TOTAL EN SOLES:* S/ ${Number(total).toFixed(2)}\n✈️ *ENTREGA EN LIMA:* 29 de Octubre\n🛡️ *COMPRA OFICIAL:* Tiendas autorizadas en USA\n─────────────────────────\n💻 *VER Y CONFIRMAR EN EL CRM:* https://storebass.vercel.app/admin\n─────────────────────────\n👋 ¡Hola Johan Tovar! Acabo de registrar mi pedido en la web. Deseo coordinar el pago y asegurar mi cupo para este viaje. 🙌`
+      );
+      window.open(`https://wa.me/51960759244?text=${waMsg}`, '_blank');
     } catch (err) {
       console.error('Error generando ticket:', err);
     } finally {

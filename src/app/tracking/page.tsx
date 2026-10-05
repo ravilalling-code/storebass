@@ -11,6 +11,7 @@ import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 interface TrackingData {
   code: string;
   title: string;
+  client?: string;
   store: string;
   modality: string;
   statusText: string;
@@ -91,30 +92,49 @@ const DEFAULT_TRACKING: TrackingData = {
 };
 
 export default function TrackingPage() {
-  const [inputCode, setInputCode] = useState('SB-84920');
-  const [tracking, setTracking] = useState<TrackingData>(DEFAULT_TRACKING);
+  const [inputCode, setInputCode] = useState('');
+  const [tracking, setTracking] = useState<TrackingData | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const code = inputCode.trim().toUpperCase();
     if (!code) return;
 
-    if (code === 'DUSA-74190-PE' || code === 'SB-74190') {
+    setHasSearched(true);
+    setErrorMessage('');
+
+    // 1. Buscar en tickets reales de localStorage
+    let found = null;
+    try {
+      const saved = localStorage.getItem('storebass_tickets');
+      if (saved) {
+        const tickets = JSON.parse(saved);
+        if (Array.isArray(tickets)) {
+          found = tickets.find((t: any) => {
+            const tCode = (t.ticket_code || t.ticketId || '').toUpperCase();
+            return tCode === code || tCode.replace('#', '') === code.replace('#', '');
+          });
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+
+    if (found) {
       setTracking({
         ...DEFAULT_TRACKING,
-        code,
-        title: 'Sony WH-1000XM5 Wireless ANC Black',
-        statusText: 'En camioneta de reparto · Lima Metropolitana',
-        progressPercent: 90,
+        code: found.ticket_code || found.ticketId,
+        title: found.detalle || 'Artículos del encargo en USA',
+        store: found.tipo === 'cotizacion_links' ? 'Tiendas USA' : 'Catálogo Store Bass',
+        client: found.cliente,
+        statusText: found.estado || 'En gestión de viaje',
+        progressPercent: found.estado === 'Listo para entrega' ? 100 : found.estado === 'Comprado en USA' ? 65 : 35,
       });
     } else {
-      setTracking({
-        ...DEFAULT_TRACKING,
-        code,
-        title: code.startsWith('SB') ? `Pedido #${code}` : DEFAULT_TRACKING.title,
-        statusText: 'En tránsito aéreo a Lima · Vuelo AA-917',
-        progressPercent: 60,
-      });
+      setTracking(null);
+      setErrorMessage(`No se encontró ningún pedido o ticket registrado con el código "${code}".`);
     }
   };
 
@@ -175,15 +195,53 @@ export default function TrackingPage() {
           </div>
         </div>
 
-        {/* Main Status Card */}
-        <div className="bg-white dark:bg-darkCard rounded-3xl p-6 sm:p-10 border border-slate-200/80 dark:border-darkBorder shadow-card-subtle mb-10 transition-all">
-          {/* Header */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-8 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <div className="flex flex-wrap items-center gap-3 mb-2">
-                <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                  GUÍA: {tracking.code}
-                </span>
+        {/* Estado Vacío / En Blanco */}
+        {!tracking && (
+          <div className="bg-white dark:bg-darkCard rounded-3xl p-8 sm:p-12 text-center border border-dashed border-slate-300 dark:border-darkBorder shadow-card-subtle mb-10 space-y-4">
+            <div className="w-16 h-16 rounded-3xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto">
+              <span className="material-symbols-outlined text-4xl">
+                {hasSearched ? 'search_off' : 'radar'}
+              </span>
+            </div>
+            <h3 className="text-xl font-black text-slate-900 dark:text-white font-display">
+              {hasSearched
+                ? errorMessage || 'No se encontró el pedido'
+                : 'No hay pedidos en pantalla'}
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+              {hasSearched
+                ? 'Verifica que el número de ticket sea correcto (ej. TK-1004). Si recién realizaste tu pedido, consulta directamente con Johan por WhatsApp.'
+                : 'Ingresa tu número de ticket o código de tracking para ver la ruta aérea en vivo y la fecha estimada de entrega.'}
+            </p>
+            {hasSearched && (
+              <div className="pt-2">
+                <a
+                  href={`https://wa.me/51960759244?text=${encodeURIComponent(
+                    `👋 ¡Hola Johan Tovar! Quiero consultar el estado de mi pedido o ticket: ${inputCode}`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-white font-black text-xs shadow-md transition-transform active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-base">chat</span>
+                  <span>Consultar por WhatsApp con Johan</span>
+                </a>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Main Status Card (Solo si tracking existe) */}
+        {tracking && (
+          <>
+            <div className="bg-white dark:bg-darkCard rounded-3xl p-6 sm:p-10 border border-slate-200/80 dark:border-darkBorder shadow-card-subtle mb-10 transition-all">
+              {/* Header */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-8 border-b border-slate-100 dark:border-slate-800">
+                <div>
+                  <div className="flex flex-wrap items-center gap-3 mb-2">
+                    <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                      GUÍA: {tracking.code}
+                    </span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-xs font-bold border border-emerald-500/30">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
                   <span>{tracking.statusText}</span>
@@ -407,6 +465,8 @@ export default function TrackingPage() {
             <span>Hablar por WhatsApp</span>
           </a>
         </div>
+        </>
+        )}
       </main>
 
       <Footer />

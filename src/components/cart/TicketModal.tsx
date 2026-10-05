@@ -27,11 +27,15 @@ export function TicketModal() {
     rawMsg += `✈️ *VIAJE A USA:* Salida 20 Oct ➔ Entrega en Lima 29 Oct\n`;
     rawMsg += `🛡️ *GARANTÍA:* Tiendas oficiales USA con boleta/recibo original\n`;
     rawMsg += `─────────────────────────\n`;
+    rawMsg += `💻 *VER Y CONFIRMAR EN EL CRM:* https://storebass.vercel.app/admin\n`;
+    rawMsg += `─────────────────────────\n`;
     rawMsg += `👋 ¡Hola Johan Tovar! Acabo de registrar mi ticket en la web. Deseo coordinar la reserva de cupo y entrega para este viaje. 🙌`;
   } else {
     rawMsg += `🔗 *ENLACES / DETALLE A COTIZAR:*\n`;
     rawMsg += `${ticketData.detalle}\n\n`;
     rawMsg += `✈️ *VIAJE A USA:* Salida 20 Oct ➔ Entrega en Lima 29 Oct\n`;
+    rawMsg += `─────────────────────────\n`;
+    rawMsg += `💻 *VER Y COTIZAR EN EL CRM:* https://storebass.vercel.app/admin\n`;
     rawMsg += `─────────────────────────\n`;
     rawMsg += `👋 ¡Hola Johan Tovar! Deseo cotización exacta con precio final en soles y fecha de entrega para este viaje. ¡Muchas gracias! 🙌`;
   }

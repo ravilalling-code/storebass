@@ -74,7 +74,7 @@ export function QuoteLinkSection() {
 
     setLoading(true);
     try {
-      await generateTicket({
+      const ticket = await generateTicket({
         cliente: userName.trim(),
         telefono: userPhone.trim(),
         origen: 'Web',
@@ -83,6 +83,13 @@ export function QuoteLinkSection() {
         total: 0,
         items: [],
       });
+
+      // Enviar automáticamente a Johan por WhatsApp con los links a cotizar y acceso al CRM
+      const ticketCode = ticket.ticket_code || ticket.ticketId;
+      const waMsg = encodeURIComponent(
+        `🔗 *NUEVA COTIZACIÓN POR LINK — STORE BASS* 🇺🇸✈️🇵🇪\n─────────────────────────\n🎫 *TICKET CONSECUTIVO:* #${ticketCode}\n👤 *CLIENTE:* ${userName.trim()}\n📱 *WHATSAPP:* ${userPhone.trim()}\n📅 *FECHA:* ${ticket.fecha || ''}\n─────────────────────────\n🔗 *ENLACES DE USA A COTIZAR:*\n${detailText}\n\n✈️ *VIAJE A USA:* Salida 20 Oct ➔ Entrega en Lima 29 Oct\n─────────────────────────\n💻 *VER Y COTIZAR EN EL CRM:* https://storebass.vercel.app/admin\n─────────────────────────\n👋 ¡Hola Johan Tovar! Acabo de enviar estos enlaces desde la web para cotizar. ¿Cuál es el precio final en soles y la disponibilidad? 🙌`
+      );
+      window.open(`https://wa.me/51960759244?text=${waMsg}`, '_blank');
     } catch (err) {
       console.error('Error generando ticket:', err);
     } finally {

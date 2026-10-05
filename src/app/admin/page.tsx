@@ -1092,14 +1092,14 @@ export default function AdminPage() {
                                   /[^0-9]/g,
                                   ''
                                 )}?text=${encodeURIComponent(
-                                  `Hola ${t.cliente}, te escribe Johan Tovar de STORE BASS respecto a tu ticket consecutivo #${t.ticketId}`
+                                  `🛍️ *STORE BASS — CONFIRMACIÓN DE PEDIDO* 🇺🇸✈️🇵🇪\n─────────────────────────\n👋 ¡Hola ${t.cliente}! Te escribe Johan Tovar respecto a tu ticket consecutivo #${t.ticketId || t.ticket_code}.\n\n✅ *ESTADO:* ${t.estado || 'Confirmado'}\n📦 *DETALLE:* ${t.detalle || 'Productos del pedido'}\n💰 *TOTAL EN SOLES:* S/ ${parseFloat(t.total || 0).toFixed(2)}\n✈️ *ENTREGA EN LIMA:* 29 de Octubre\n─────────────────────────\n¿Deseas coordinar los datos de entrega o hacer alguna consulta adicional? ¡Estoy a tu servicio! 🙌`
                                 )}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-transform active:scale-95"
                               >
                                 <span className="material-symbols-outlined text-sm">chat</span>
-                                <span>WhatsApp</span>
+                                <span>Confirmar WA</span>
                               </a>
                             </td>
                           </tr>
