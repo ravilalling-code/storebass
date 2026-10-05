@@ -159,6 +159,7 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
                   {product.name}
                 </h2>
 
+                {product.description && <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{product.description}</p>}
                 {/* Precios */}
                 <div className="mt-3 flex items-baseline gap-2.5">
                   <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">

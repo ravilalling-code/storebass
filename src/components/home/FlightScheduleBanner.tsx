@@ -3,64 +3,31 @@
 import React, { useState, useEffect } from 'react';
 import { WhatsAppIcon } from '@/components/ui/WhatsAppIcon';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import { getWhatsAppLink } from '@/lib/constants';
 
 export function FlightScheduleBanner() {
   const [tripData, setTripData] = useState({
-    dateIda: '20 de Octubre',
-    dateRegreso: '29 de Octubre',
-    status: 'Cupos Abiertos',
+    dateIda: '20 de Octubre', dateRegreso: '29 de Octubre', status: 'Cupos Abiertos',
+    departure: 'Lima', arrival: 'Miami', deadlineLima: '', deadlineUsa: '', phone: '51960759244',
   });
+  const formatDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? new Date(value + 'T12:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' }) : value;
 
   useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
+    let disposed = false;
     const loadTripConfig = async () => {
-      const supabase = getSupabaseBrowserClient();
-      if (supabase) {
-        try {
-          const { data, error } = await supabase
-            .from('trip_config')
-            .select('*')
-            .limit(1)
-            .single();
-
-          if (!error && data) {
-            setTripData({
-              dateIda: data.date_ida || '20 de Octubre',
-              dateRegreso: data.date_regreso || '29 de Octubre',
-              status: data.status || 'Cupos Abiertos',
-            });
-            return;
-          }
-        } catch (e) {
-          console.warn('Error loading trip config from Supabase:', e);
-        }
-      }
-
-      if (typeof window !== 'undefined') {
-        const local = localStorage.getItem('storebass_trip_settings');
-        if (local) {
-          try {
-            const parsed = JSON.parse(local);
-            setTripData({
-              dateIda: parsed.startDate || '20 de Octubre',
-              dateRegreso: parsed.returnDate || '29 de Octubre',
-              status: 'Cupos Abiertos',
-            });
-          } catch (e) {
-            console.error(e);
-          }
-        }
-      }
+      const { data, error } = await supabase.from('trip_config').select('*').eq('id', 1).single();
+      if (disposed || error || !data) return;
+      setTripData({ dateIda: data.date_ida || '', dateRegreso: data.date_regreso || '', status: data.status || 'Cupos Abiertos',
+        departure: data.departure_place || 'Lima', arrival: data.arrival_place || 'Miami',
+        deadlineLima: data.order_deadline_lima || '', deadlineUsa: data.order_deadline_usa || '', phone: data.phone_digits || '51960759244' });
     };
-
-    loadTripConfig();
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('storebass_trip_settings_updated', loadTripConfig);
-      return () => {
-        window.removeEventListener('storebass_trip_settings_updated', loadTripConfig);
-      };
-    }
+    void loadTripConfig();
+    const channel = supabase.channel('public-trip').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trip_config' }, () => { void loadTripConfig(); }).subscribe();
+    window.addEventListener('storebass_trip_settings_updated', loadTripConfig);
+    window.addEventListener('focus', loadTripConfig);
+    return () => { disposed = true; void supabase.removeChannel(channel); window.removeEventListener('storebass_trip_settings_updated', loadTripConfig); window.removeEventListener('focus', loadTripConfig); };
   }, []);
 
   return (
@@ -109,38 +76,42 @@ export function FlightScheduleBanner() {
                 <span className="material-symbols-outlined text-sm text-amber-400">flight_takeoff</span>
               </div>
               <div className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                {tripData.dateIda}
+                {formatDate(tripData.dateIda)}
               </div>
               <div className="flex items-center gap-2 text-xs text-slate-300">
-                <span className="font-bold text-amber-400">LIM</span>
+                <span className="font-bold text-amber-400">{tripData.departure}</span>
                 <span className="text-slate-500">→</span>
-                <span className="font-bold text-white">MIA (Miami Hub)</span>
+                <span className="font-bold text-white">{tripData.arrival}</span>
               </div>
               <p className="text-[11px] text-slate-400">
-                Inicio de compras en tiendas y centros comerciales de USA.
+                Inicio de compras en {tripData.arrival}.
               </p>
             </div>
 
             {/* Vuelo Regreso / Entrega */}
             <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-amber-500/40 space-y-2 relative group hover:border-amber-500/60 transition-colors">
               <div className="flex items-center justify-between text-[11px] text-amber-400 font-bold uppercase tracking-wider">
-                <span>Entrega en Lima</span>
+                <span>Regreso a {tripData.departure}</span>
                 <span className="material-symbols-outlined text-sm text-emerald-400">flight_land</span>
               </div>
               <div className="text-xl sm:text-2xl font-black text-amber-400 tracking-tight">
-                {tripData.dateRegreso}
+                {formatDate(tripData.dateRegreso)}
               </div>
               <div className="flex items-center gap-2 text-xs text-slate-300">
-                <span className="font-bold text-white">MIA</span>
+                <span className="font-bold text-white">{tripData.arrival}</span>
                 <span className="text-slate-500">→</span>
-                <span className="font-bold text-emerald-400">En mis manos a Lima</span>
+                <span className="font-bold text-emerald-400">{tripData.departure}</span>
               </div>
               <p className="text-[11px] text-slate-300">
-                Entregas personales y envíos a todo el Perú desde el {tripData.dateRegreso}.
+                Entregas desde el {formatDate(tripData.dateRegreso)}.
               </p>
             </div>
           </div>
 
+          <div className="text-xs text-slate-300 space-y-2 lg:max-w-44">
+            <p><span className="block font-bold text-amber-400">Pedidos en Lima hasta</span>{tripData.deadlineLima ? formatDate(tripData.deadlineLima) : 'Por confirmar'}</p>
+            <p><span className="block font-bold text-amber-400">Pedidos en USA hasta</span>{tripData.deadlineUsa ? formatDate(tripData.deadlineUsa) : 'Por confirmar'}</p>
+          </div>
           {/* Acciones del Vuelo */}
           <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 lg:w-56 flex-shrink-0">
             <a
@@ -152,8 +123,8 @@ export function FlightScheduleBanner() {
             </a>
 
             <a
-              href={`https://wa.me/51960759244?text=${encodeURIComponent(
-                `✈️ *STORE BASS — RESERVA DE CUPO PARA VIAJE A USA* 🇺🇸🇵🇪\n─────────────────────────\n👋 ¡Hola Johan Tovar! Quiero consultar y reservar mi cupo para el viaje confirmado:\n\n🛫 *SALIDA:* 20 de Octubre (Lima ➔ Miami Hub)\n🛬 *ENTREGA:* 29 de Octubre (En mis manos en Lima)\n\n¿Aún tienes espacio en tu equipaje para mis compras? ¡Muchas gracias! 🙌`
+              href={`https://wa.me/${tripData.phone}?text=${encodeURIComponent(
+                `✈️ *STORE BASS — RESERVA DE CUPO PARA VIAJE A USA* 🇺🇸🇵🇪\n─────────────────────────\n👋 ¡Hola Johan Tovar! Quiero consultar y reservar mi cupo para el viaje confirmado:\n\n🛫 *SALIDA:* ${formatDate(tripData.dateIda)} (${tripData.departure} ➔ ${tripData.arrival})\n🛬 *ENTREGA:* ${formatDate(tripData.dateRegreso)} (${tripData.arrival} ➔ ${tripData.departure})\n\n¿Aún tienes espacio en tu equipaje para mis compras? ¡Muchas gracias! 🙌`
               )}`}
               target="_blank"
               rel="noopener noreferrer"

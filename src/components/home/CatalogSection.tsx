@@ -38,12 +38,13 @@ export function CatalogSection({
             .from('products')
             .select('*')
             .eq('active', true)
-            .order('display_order', { ascending: true });
+            .order('created_at', { ascending: false });
 
-          if (!error && data && data.length > 0) {
+          if (!error && data) {
             const mapped: Product[] = data.map((p: any) => ({
               id: p.id,
               name: p.name,
+              description: p.description || '',
               category: p.category,
               regularPrice: Number(p.regular_price || p.regularPrice || p.price * 1.15),
               price: Number(p.price),

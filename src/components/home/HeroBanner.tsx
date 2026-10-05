@@ -134,7 +134,6 @@ export function HeroBanner({ onSelectCategory }: HeroBannerProps) {
             {/* Trust pills — stagger-5 */}
             <div className="animate-fade-up stagger-5 pt-2 flex flex-wrap items-center gap-3 text-[11px] text-slate-400 font-semibold">
               {[
-                {icon:'verified',color:'text-emerald-400',label:'Boleta / Recibo original'},
                 {icon:'shield_lock',color:'text-amber-400',label:'Garantía de compra oficial'},
                 {icon:'local_shipping',color:'text-blue-400',label:'Entrega en Lima y todo Perú'},
               ].map((t,i) => (

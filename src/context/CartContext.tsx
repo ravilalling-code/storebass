@@ -139,68 +139,30 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     total?: number;
   }): Promise<Ticket> => {
     const calcTotal = customTotal !== undefined ? customTotal : total;
-    let seq = parseInt(localStorage.getItem('storebass_ticket_seq') || '1004', 10);
-    let ticketCode = `TK-${seq}`;
-    let fecha = new Date().toLocaleString('es-PE', {
-      timeZone: 'America/Lima',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-
     const supabase = getSupabaseBrowserClient();
-
-    // 1. Intentar llamar a función atómica en Supabase
-    if (supabase) {
-      try {
-        const { data, error } = await supabase.rpc('fn_create_ticket', {
-          p_origen: origen,
-          p_cliente: cliente,
-          p_telefono: telefono,
-          p_detalle: detalle || (ticketItems.length > 0 ? ticketItems.map(i => i.title).join(', ') : 'Pedido catálogo'),
-          p_total: calcTotal,
-          p_estado: 'Pendiente',
-          p_tipo: tipo,
-          p_items: ticketItems,
-        });
-
-        if (!error && data && data.length > 0) {
-          const res = data[0];
-          ticketCode = res.ticket_code;
-          seq = res.correlativo;
-          fecha = res.fecha || fecha;
-          localStorage.setItem('storebass_ticket_seq', (seq + 1).toString());
-        } else {
-          // Respaldo directo en tabla tickets de Supabase si la función RPC no está disponible
-          await supabase.from('tickets').insert([
-            {
-              ticket_code: ticketCode,
-              correlativo: seq,
-              origen,
-              cliente,
-              telefono,
-              detalle: detalle || (ticketItems.length > 0 ? ticketItems.map(i => i.title).join(', ') : 'Pedido web'),
-              total: calcTotal,
-              estado: 'Pendiente',
-              tipo,
-              items: ticketItems,
-            },
-          ]);
-          localStorage.setItem('storebass_ticket_seq', (seq + 1).toString());
-        }
-      } catch (e) {
-        console.warn('[STORE BASS] Fallo conexión Supabase tickets:', e);
-      }
+    if (!supabase) {
+      showToast('No se registró el pedido', 'Revisa tu conexión e inténtalo nuevamente.');
+      throw new Error('Supabase no disponible');
     }
-
-    if (!ticketCode.startsWith('TK-')) {
-      ticketCode = `TK-${seq}`;
-      localStorage.setItem('storebass_ticket_seq', (seq + 1).toString());
+    let result;
+    try {
+      const { data, error } = await supabase.rpc('fn_create_ticket', {
+        p_origen: origen, p_cliente: cliente, p_telefono: telefono,
+        p_detalle: detalle || (ticketItems.length ? ticketItems.map(i => i.title).join(', ') : 'Pedido web'),
+        p_total: calcTotal, p_estado: 'Pendiente', p_tipo: tipo, p_items: ticketItems,
+      });
+      if (error || !data?.[0]?.ticket_code) throw error || new Error('Respuesta inválida');
+      result = data[0];
+    } catch (error) {
+      showToast('No se pudo confirmar el pedido', 'Conservamos tu carrito. Revisa tu conexión antes de reintentar.');
+      throw error;
     }
+    const ticketCode = result.ticket_code;
+    const seq = result.correlativo;
+    const fecha = result.fecha;
 
     const newTicket: Ticket = {
+      id: result.id,
       ticket_code: ticketCode,
       ticketId: ticketCode,
       correlativo: seq,

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { INITIAL_PRODUCTS } from '@/data/initialCatalog';
 import { INITIAL_TRENDS } from '@/components/home/TrendsCarousel';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 import { AdBanner } from '@/lib/types';
 import { useToast } from '@/context/CartContext';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -31,9 +32,10 @@ export default function AdminPage() {
   const [products, setProducts] = useState(INITIAL_PRODUCTS);
   const [catalogSearch, setCatalogSearch] = useState('');
   const [productModalOpen, setProductModalOpen] = useState(false);
-  const [editingProductId, setEditingProductId] = useState<number | null>(null);
+  const [editingProductId, setEditingProductId] = useState<string | number | null>(null);
   const [prodForm, setProdForm] = useState({
     name: '',
+    description: '',
     category: 'Perfumes',
     delivery: 'Llega el 29 de Octubre',
     regularPrice: 0,
@@ -78,7 +80,16 @@ export default function AdminPage() {
     phone: '+51 960 759 244',
     exchangeRate: '3.75',
     activeTripLabel: '20 Oct - 29 Oct',
+    departurePlace: 'Lima',
+    arrivalPlace: 'Miami',
+    orderDeadlineLima: '',
+    orderDeadlineUsa: '',
   });
+
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [crmConnection, setCrmConnection] = useState('Conectando…');
+  const [savingTicket, setSavingTicket] = useState<string | null>(null);
 
   // Marketing Banners & Tendencias State
   const [ads, setAds] = useState<AdBanner[]>(INITIAL_TRENDS);
@@ -121,7 +132,7 @@ export default function AdminPage() {
         supabase
           .from('products')
           .select('*')
-          .order('display_order', { ascending: true })
+          .order('created_at', { ascending: false })
           .then(({ data, error }) => {
             if (!error && data && data.length > 0) {
               setProducts(data);
@@ -132,32 +143,6 @@ export default function AdminPage() {
               if (savedProds) {
                 try {
                   setProducts(JSON.parse(savedProds));
-                } catch (e) {
-                  console.error(e);
-                }
-              }
-            }
-          });
-
-        // 3. Cargar Tickets desde Supabase Cloud
-        supabase
-          .from('tickets')
-          .select('*')
-          .order('id', { ascending: false })
-          .limit(50)
-          .then(({ data, error }) => {
-            if (!error && data && data.length > 0) {
-              setTickets(data);
-              localStorage.setItem('storebass_tickets', JSON.stringify(data));
-            } else {
-              const savedTickets = localStorage.getItem('storebass_tickets');
-              if (savedTickets) {
-                try {
-                  const parsed = JSON.parse(savedTickets);
-                  const realTickets = Array.isArray(parsed)
-                    ? parsed.filter((t: any) => !['TK-1001', 'TK-1002', 'TK-1003'].includes(t?.ticketId))
-                    : [];
-                  setTickets(realTickets);
                 } catch (e) {
                   console.error(e);
                 }
@@ -193,6 +178,51 @@ export default function AdminPage() {
       }
     }
   }, []);
+
+  // Load private orders only after authentication; refresh on reconnect and changes.
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (!isAuthenticated || !supabase) { setTickets([]); return; }
+    let disposed = false;
+    let request = 0;
+    const refresh = async () => {
+      const current = ++request;
+      const { data, error } = await supabase.from('tickets').select('*').order('created_at', { ascending: false });
+      if (disposed || current !== request) return;
+      if (error) { setCrmConnection('Error al cargar pedidos'); return; }
+      setTickets((data || []).map(t => ({ ...t, ticketId: t.ticket_code,
+        fecha: new Date(t.created_at).toLocaleString('es-PE', { timeZone: 'America/Lima' }) })));
+    };
+    void refresh();
+    const channel = supabase.channel('admin-crm')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, () => { void refresh(); })
+      .subscribe(status => {
+        if (disposed) return;
+        setCrmConnection(status === 'SUBSCRIBED' ? 'En tiempo real' : 'Reconectando · respaldo cada 15 s');
+        if (status === 'SUBSCRIBED') void refresh();
+      });
+    const timer = window.setInterval(refresh, 15000);
+    window.addEventListener('focus', refresh);
+    return () => { disposed = true; clearInterval(timer); window.removeEventListener('focus', refresh); void supabase.removeChannel(channel); };
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
+    let disposed = false;
+    void supabase.from('trip_config').select('*').eq('id', 1).single().then(({ data, error }) => {
+      if (disposed || error || !data) return;
+      setTripSettings(previous => ({ ...previous,
+        startDate: /^\d{4}-\d{2}-\d{2}$/.test(data.date_ida) ? data.date_ida : '',
+        returnDate: /^\d{4}-\d{2}-\d{2}$/.test(data.date_regreso) ? data.date_regreso : '',
+        phone: data.phone || '', exchangeRate: String(data.exchange_rate ?? 3.75),
+        departurePlace: data.departure_place || 'Lima', arrivalPlace: data.arrival_place || 'Miami',
+        orderDeadlineLima: data.order_deadline_lima || '', orderDeadlineUsa: data.order_deadline_usa || '',
+      }));
+    });
+    return () => { disposed = true; };
+  }, [isAuthenticated]);
 
   // Handle Login con Supabase Auth (Sin contraseñas en frontend)
   const handleLogin = async (e: React.FormEvent) => {
@@ -255,63 +285,25 @@ export default function AdminPage() {
     }
 
     const supabase = getSupabaseBrowserClient();
-    let updated: any[];
-    if (editingProductId) {
-      updated = products.map((p) =>
-        p.id === editingProductId ? { ...p, ...prodForm } : p
-      );
-      showToast('Producto actualizado', prodForm.name);
-
-      if (supabase) {
-        try {
-          await supabase
-            .from('products')
-            .update({
-              name: prodForm.name,
-              category: prodForm.category,
-              delivery: prodForm.delivery,
-              regular_price: prodForm.regularPrice,
-              price: prodForm.price,
-              img: prodForm.img,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', editingProductId);
-        } catch (err) {
-          console.warn('Error al actualizar producto en Supabase:', err);
-        }
-      }
-    } else {
-      const newId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
-      const newP = {
-        id: newId,
-        ...prodForm,
-      };
-      updated = [newP, ...products];
-      showToast('Nuevo producto guardado', prodForm.name);
-
-      if (supabase) {
-        try {
-          await supabase.from('products').insert([
-            {
-              id: newId,
-              name: prodForm.name,
-              category: prodForm.category,
-              delivery: prodForm.delivery,
-              regular_price: prodForm.regularPrice,
-              price: prodForm.price,
-              img: prodForm.img,
-            },
-          ]);
-        } catch (err) {
-          console.warn('Error al insertar producto en Supabase:', err);
-        }
-      }
-    }
-    setProducts(updated);
-    localStorage.setItem('storebass_products', JSON.stringify(updated));
-    window.dispatchEvent(new Event('storebass_products_updated'));
-    setProductModalOpen(false);
-    setEditingProductId(null);
+    if (!supabase || saving || uploading) return;
+    setSaving(true);
+    try {
+      const values = { name: prodForm.name.trim(), description: prodForm.description.trim(),
+        category: prodForm.category, delivery: prodForm.delivery, regular_price: prodForm.regularPrice,
+        price: prodForm.price, img: prodForm.img, updated_at: new Date().toISOString() };
+      const query = editingProductId
+        ? supabase.from('products').update(values).eq('id', editingProductId)
+        : supabase.from('products').insert(values);
+      const { data, error } = await query.select().single();
+      if (error) throw error;
+      setProducts(previous => editingProductId ? previous.map(p => p.id === editingProductId ? data : p) : [data, ...previous]);
+      window.dispatchEvent(new Event('storebass_products_updated'));
+      setProductModalOpen(false);
+      setEditingProductId(null);
+      showToast('Producto guardado', prodForm.name);
+    } catch {
+      showToast('No se pudo guardar', 'Revisa tu conexión y permisos. El formulario conserva tus cambios.');
+    } finally { setSaving(false); }
   };
 
   const handleDeleteProduct = async (id: number | string) => {
@@ -336,9 +328,10 @@ export default function AdminPage() {
     setEditingProductId(p.id);
     setProdForm({
       name: p.name,
+      description: p.description || '',
       category: p.category,
       delivery: p.delivery,
-      regularPrice: p.regularPrice || p.price * 1.15,
+      regularPrice: p.regular_price ?? p.regularPrice ?? p.price,
       price: p.price,
       img: p.img,
     });
@@ -403,45 +396,42 @@ export default function AdminPage() {
 
   // Guardar Ajustes de Viaje sincronizados con Supabase
   const handleSaveTripSettings = async () => {
-    localStorage.setItem('storebass_trip_settings', JSON.stringify(tripSettings));
-    window.dispatchEvent(new Event('storebass_trip_settings_updated'));
     const supabase = getSupabaseBrowserClient();
-    if (supabase) {
-      try {
-        await supabase.from('trip_config').upsert({
-          id: 1,
-          date_ida: tripSettings.startDate,
-          date_regreso: tripSettings.returnDate,
-          phone: tripSettings.phone,
-          exchange_rate: tripSettings.exchangeRate,
-          updated_at: new Date().toISOString(),
-        });
-      } catch (err) {
-        console.warn('Error saving trip settings to Supabase:', err);
-      }
+    if (!supabase || saving) return;
+    if (!tripSettings.startDate || !tripSettings.returnDate || tripSettings.returnDate < tripSettings.startDate || !tripSettings.departurePlace.trim() || !tripSettings.arrivalPlace.trim()) {
+      showToast('Revisa el viaje', 'Indica los lugares y fechas; el regreso debe ser posterior a la salida.'); return;
     }
-    showToast('Ajustes guardados con éxito', 'Configuración del viaje actualizada en nube');
+    setSaving(true);
+    try {
+      const { error } = await supabase.from('trip_config').update({
+        date_ida: tripSettings.startDate, date_regreso: tripSettings.returnDate,
+        phone: tripSettings.phone, phone_digits: tripSettings.phone.replace(/\D/g, ''),
+        exchange_rate: Number(tripSettings.exchangeRate),
+        departure_place: tripSettings.departurePlace.trim(), arrival_place: tripSettings.arrivalPlace.trim(),
+        order_deadline_lima: tripSettings.orderDeadlineLima || null,
+        order_deadline_usa: tripSettings.orderDeadlineUsa || null,
+        updated_at: new Date().toISOString(),
+      }).eq('id', 1).select('id').single();
+      if (error) throw error;
+      window.dispatchEvent(new Event('storebass_trip_settings_updated'));
+      showToast('Ajustes guardados', 'Configuración del viaje actualizada en nube');
+    } catch { showToast('No se pudo guardar', 'Revisa tu conexión y permisos.'); }
+    finally { setSaving(false); }
   };
 
-  // Ticket Status update
-  const handleUpdateTicketStatus = (ticketId: string, newStatus: string) => {
-    const updated = tickets.map((t) =>
-      t.ticketId === ticketId ? { ...t, estado: newStatus } : t
-    );
-    setTickets(updated);
-    localStorage.setItem('storebass_tickets', JSON.stringify(updated));
-
-    // Try updating Supabase Cloud
+  const handleUpdateTicketStatus = async (ticketId: string, newStatus: string) => {
     const supabase = getSupabaseBrowserClient();
-    if (supabase) {
-      supabase
-        .from('tickets')
-        .update({ estado: newStatus })
-        .eq('ticket_id', ticketId)
-        .then();
-    }
-
-    showToast(`Ticket #${ticketId} actualizado`, `Nuevo estado: ${newStatus}`);
+    if (!supabase || savingTicket) return;
+    setSavingTicket(ticketId);
+    try {
+      const { data, error } = await supabase.from('tickets')
+        .update({ estado: newStatus, updated_at: new Date().toISOString() })
+        .eq('ticket_code', ticketId).select().single();
+      if (error) throw error;
+      setTickets(previous => previous.map(t => t.ticket_code === ticketId ? { ...t, ...data } : t));
+      showToast('Estado guardado', `${ticketId}: ${newStatus}`);
+    } catch { showToast('No se guardó el estado', 'Inténtalo nuevamente.'); }
+    finally { setSavingTicket(null); }
   };
 
   // ==========================================
@@ -484,73 +474,22 @@ export default function AdminPage() {
       return;
     }
 
-    let updated: AdBanner[];
     const supabase = getSupabaseBrowserClient();
-
-    if (editingBannerId !== null) {
-      updated = ads.map((a) =>
-        a.id === editingBannerId
-          ? {
-              ...a,
-              ...bannerForm,
-            }
-          : a
-      );
-      showToast('Imagen del carrusel actualizada', bannerForm.title);
-
-      if (supabase) {
-        try {
-          await supabase
-            .from('ads')
-            .update({
-              title: bannerForm.title,
-              subtitle: bannerForm.subtitle,
-              tag: bannerForm.tag,
-              btn_text: bannerForm.btn_text,
-              link: bannerForm.link,
-              img: bannerForm.img,
-              active: bannerForm.active,
-              display_order: bannerForm.display_order,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', editingBannerId);
-        } catch (err) {
-          console.warn('Error al actualizar banner en Supabase:', err);
-        }
-      }
-    } else {
-      const newAd: AdBanner = {
-        id: Date.now(),
-        ...bannerForm,
-      };
-      updated = [newAd, ...ads];
-      showToast('Nueva imagen añadida al carrusel', bannerForm.title);
-
-      if (supabase) {
-        try {
-          await supabase.from('ads').insert([
-            {
-              title: bannerForm.title,
-              subtitle: bannerForm.subtitle,
-              tag: bannerForm.tag,
-              btn_text: bannerForm.btn_text,
-              link: bannerForm.link,
-              img: bannerForm.img,
-              active: bannerForm.active,
-              display_order: bannerForm.display_order,
-            },
-          ]);
-        } catch (err) {
-          console.warn('Error al insertar banner en Supabase:', err);
-        }
-      }
-    }
-
-    setAds(updated);
-    localStorage.setItem('storebass_ads', JSON.stringify(updated));
-    window.dispatchEvent(new Event('storebass_ads_updated'));
-    setBannerModalOpen(false);
-    setEditingBannerId(null);
+    if (!supabase || saving || uploading) return;
+    setSaving(true);
+    try {
+      const query = editingBannerId !== null
+        ? supabase.from('ads').update(bannerForm).eq('id', editingBannerId)
+        : supabase.from('ads').insert(bannerForm);
+      const { data, error } = await query.select().single();
+      if (error) throw error;
+      setAds(previous => editingBannerId !== null ? previous.map(a => a.id === editingBannerId ? data : a) : [data, ...previous]);
+      window.dispatchEvent(new Event('storebass_ads_updated'));
+      setBannerModalOpen(false);
+      setEditingBannerId(null);
+      showToast('Imagen guardada', bannerForm.title);
+    } catch { showToast('No se pudo guardar la imagen', 'Revisa tu conexión y permisos.'); }
+    finally { setSaving(false); }
   };
 
   const handleToggleBannerActive = async (id: string | number) => {
@@ -1070,6 +1009,7 @@ export default function AdminPage() {
                       setEditingProductId(null);
                       setProdForm({
                         name: '',
+                        description: '',
                         category: 'Perfumes',
                         delivery: 'Llega el 29 de Octubre',
                         regularPrice: 0,
@@ -1131,7 +1071,7 @@ export default function AdminPage() {
                               </span>
                             </td>
                             <td className="p-4 text-slate-400 line-through">
-                              S/ {parseFloat(String(p.regularPrice || p.price * 1.15)).toFixed(2)}
+                              S/ {parseFloat(String(p.regular_price ?? p.regularPrice ?? p.price)).toFixed(2)}
                             </td>
                             <td className="p-4 font-black text-amber-400 text-sm">
                               S/ {parseFloat(String(p.price)).toFixed(2)}
@@ -1361,7 +1301,7 @@ export default function AdminPage() {
                   <table className="w-full min-w-[700px] text-left text-xs text-slate-300">
                     <thead className="bg-slate-850 border-b border-slate-800 text-[11px] uppercase font-bold text-slate-400 tracking-wider">
                       <tr>
-                        <th className="p-4">Ticket</th>
+                        <th className="p-4">Ticket <span className="block text-[10px] normal-case" role="status">{crmConnection}</span></th>
                         <th className="p-4">Fecha</th>
                         <th className="p-4">Cliente</th>
                         <th className="p-4">Detalle / Links</th>
@@ -1414,9 +1354,10 @@ export default function AdminPage() {
                             </td>
                             <td className="p-4">
                               <select
+                                disabled={savingTicket !== null}
                                 value={t.estado || 'Pendiente'}
                                 onChange={(e) =>
-                                  handleUpdateTicketStatus(t.ticketId, e.target.value)
+                                  handleUpdateTicketStatus(t.ticket_code, e.target.value)
                                 }
                                 className="bg-slate-800 border border-slate-700 text-xs text-white rounded-lg px-2 py-1 focus:border-amber-500"
                               >
@@ -1426,6 +1367,8 @@ export default function AdminPage() {
                                 <option value="Comprado en USA">Comprado en USA</option>
                                 <option value="En camino a Perú">En camino a Perú</option>
                                 <option value="Listo para entrega">Listo para entrega</option>
+                                <option value="Entregado">Entregado</option>
+                                <option value="Cancelado">Cancelado</option>
                               </select>
                             </td>
                             <td className="p-4 text-right">
@@ -1580,7 +1523,7 @@ export default function AdminPage() {
                 <div className="space-y-4 pt-2">
                   <div>
                     <label className="block text-xs font-bold text-slate-400 mb-1">
-                      Fecha de Salida a USA
+                      Fecha de salida
                     </label>
                     <input
                       type="date"
@@ -1594,7 +1537,7 @@ export default function AdminPage() {
 
                   <div>
                     <label className="block text-xs font-bold text-slate-400 mb-1">
-                      Fecha de Regreso a Lima (Llegada de Pedidos)
+                      Fecha de regreso (llegada de pedidos)
                     </label>
                     <input
                       type="date"
@@ -1635,8 +1578,21 @@ export default function AdminPage() {
                     />
                   </div>
 
+                  <label className="block text-xs font-bold text-slate-400">Lugar de salida
+                    <input type="text" value={tripSettings.departurePlace} onChange={e => setTripSettings({ ...tripSettings, departurePlace: e.target.value })} className="mt-1 w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2" />
+                  </label>
+                  <label className="block text-xs font-bold text-slate-400">Lugar de llegada (destino de ida)
+                    <input type="text" value={tripSettings.arrivalPlace} onChange={e => setTripSettings({ ...tripSettings, arrivalPlace: e.target.value })} className="mt-1 w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2" />
+                  </label>
+                  <label className="block text-xs font-bold text-slate-400">Recibimos pedidos en Lima hasta
+                    <input type="date" value={tripSettings.orderDeadlineLima} onChange={e => setTripSettings({ ...tripSettings, orderDeadlineLima: e.target.value })} className="mt-1 w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2" />
+                  </label>
+                  <label className="block text-xs font-bold text-slate-400">Recibimos pedidos en USA hasta
+                    <input type="date" value={tripSettings.orderDeadlineUsa} onChange={e => setTripSettings({ ...tripSettings, orderDeadlineUsa: e.target.value })} className="mt-1 w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2" />
+                  </label>
                   <button
                     onClick={handleSaveTripSettings}
+                    disabled={saving}
                     className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-xl text-xs transition-colors shadow-md mt-4 cursor-pointer"
                   >
                     Guardar Configuración en Nube
@@ -1651,7 +1607,7 @@ export default function AdminPage() {
       {/* Product Modal */}
       {productModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md max-h-[90dvh] overflow-y-auto shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <span className="material-symbols-outlined text-amber-500">inventory_2</span>
@@ -1736,7 +1692,10 @@ export default function AdminPage() {
               </div>
 
               <div>
-                <label className="block text-slate-400 font-bold mb-1">URL de la Imagen</label>
+                <label className="block text-slate-400 font-bold mb-1">Descripción del producto</label>
+                <textarea aria-label="Descripción del producto" value={prodForm.description} onChange={e => setProdForm({ ...prodForm, description: e.target.value })} rows={3} className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 mb-3" />
+                <ImageUpload onUpload={url => setProdForm(previous => ({ ...previous, img: url }))} onBusy={setUploading} />
+                <label className="block text-slate-400 font-bold mb-1 mt-3">URL de la Imagen</label>
                 <input
                   type="url"
                   required
@@ -1756,7 +1715,7 @@ export default function AdminPage() {
                   Cancelar
                 </button>
                 <button
-                  type="submit"
+                  type="submit" disabled={saving || uploading}
                   className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl"
                 >
                   Guardar Producto
@@ -1830,7 +1789,7 @@ export default function AdminPage() {
                   Cancelar
                 </button>
                 <button
-                  type="submit"
+                  type="submit" disabled={saving || uploading}
                   className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl"
                 >
                   Guardar
@@ -1887,6 +1846,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
+              <ImageUpload onUpload={url => setBannerForm(previous => ({ ...previous, img: url }))} onBusy={setUploading} />
               {/* URL de la Imagen */}
               <div>
                 <label className="block text-slate-400 font-bold mb-1">
@@ -2001,7 +1961,7 @@ export default function AdminPage() {
                   Cancelar
                 </button>
                 <button
-                  type="submit"
+                  type="submit" disabled={saving || uploading}
                   className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl shadow-md transition-transform active:scale-95"
                 >
                   Guardar Imagen
