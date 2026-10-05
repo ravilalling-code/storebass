@@ -148,7 +148,8 @@ RETURNS TABLE (
     estado TEXT
 )
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
     v_correlativo INTEGER;
@@ -156,6 +157,11 @@ DECLARE
     v_new_id UUID;
     v_fecha TEXT;
 BEGIN
+    -- Validación básica de seguridad
+    IF p_cliente IS NULL OR length(trim(p_cliente)) = 0 THEN
+        RAISE EXCEPTION 'El nombre del cliente es obligatorio para generar el ticket.';
+    END IF;
+
     -- 1. Obtener siguiente número correlativo atómico
     v_correlativo := nextval('public.storebass_ticket_seq');
     v_ticket_code := 'TK-' || v_correlativo::TEXT;
@@ -236,9 +242,14 @@ CREATE POLICY "Publicidad visible para todos" ON public.ads
 CREATE POLICY "Publicidad modificable por administrador" ON public.ads
     FOR ALL USING (auth.role() = 'authenticated' OR auth.role() = 'service_role');
 
--- TICKETS: Inserción pública (clientes web); Lectura y gestión para administrador
+-- TICKETS: Inserción validada para clientes web; Lectura y gestión para administrador
 CREATE POLICY "Clientes pueden crear tickets desde la web" ON public.tickets
-    FOR INSERT WITH CHECK (true);
+    FOR INSERT 
+    WITH CHECK (
+        cliente IS NOT NULL 
+        AND length(trim(cliente)) > 0
+        AND COALESCE(total, 0) >= 0
+    );
 
 CREATE POLICY "Tickets gestionables por administrador" ON public.tickets
     FOR ALL USING (auth.role() = 'authenticated' OR auth.role() = 'service_role');
@@ -257,7 +268,8 @@ CREATE POLICY "Tracking visible para todos" ON public.shipping_tracking
 CREATE POLICY "Tracking modificable por administrador" ON public.shipping_tracking
     FOR ALL USING (auth.role() = 'authenticated' OR auth.role() = 'service_role');
 
--- Permiso de ejecución pública para la función de creación de tickets
+-- Permiso de ejecución y uso de secuencia para clientes web
+GRANT USAGE, SELECT ON SEQUENCE public.storebass_ticket_seq TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.fn_create_ticket TO anon, authenticated, service_role;
 
 -- =========================================================================
@@ -267,8 +279,12 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('storebass-media', 'storebass-media', true)
 ON CONFLICT (id) DO NOTHING;
 
-CREATE POLICY "Archivos multimedia accesibles publicamente" ON storage.objects
-    FOR SELECT USING (bucket_id = 'storebass-media');
+-- Nota de seguridad Supabase: Al ser bucket público, los archivos son descargables y
+-- visibles directamente por su URL pública sin requerir SELECT abierto en storage.objects.
+-- Para evitar advertencias de listado masivo, solo administradores pueden listar los objetos:
+CREATE POLICY "Listado de multimedia para administradores" ON storage.objects
+    FOR SELECT TO authenticated
+    USING (bucket_id = 'storebass-media');
 
 CREATE POLICY "Subida de multimedia autorizada" ON storage.objects
     FOR INSERT WITH CHECK (bucket_id = 'storebass-media');
