@@ -279,12 +279,11 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('storebass-media', 'storebass-media', true)
 ON CONFLICT (id) DO NOTHING;
 
--- Nota de seguridad Supabase: Al ser bucket público, los archivos son descargables y
--- visibles directamente por su URL pública sin requerir SELECT abierto en storage.objects.
--- Para evitar advertencias de listado masivo, solo administradores pueden listar los objetos:
-CREATE POLICY "Listado de multimedia para administradores" ON storage.objects
-    FOR SELECT TO authenticated
-    USING (bucket_id = 'storebass-media');
+-- Nota oficial de seguridad Supabase (lint 0025):
+-- En buckets marcados como 'public = true', los archivos son accesibles y visibles
+-- directamente mediante su URL pública SIN requerir ninguna política SELECT.
+-- No tener política SELECT en storage.objects es la recomendación oficial de Supabase
+-- para evitar la enumeración y listado de archivos del bucket por terceros.
 
 CREATE POLICY "Subida de multimedia autorizada" ON storage.objects
     FOR INSERT WITH CHECK (bucket_id = 'storebass-media');
