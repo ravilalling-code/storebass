@@ -140,7 +140,7 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
                 ) : (
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-blue-600 text-white shadow-sm">
                     <span className="material-symbols-outlined text-xs">flight_land</span>
-                    Llega 29 Oct
+                    {product.delivery || 'Entrega por coordinar'}
                   </span>
                 )}
               </div>

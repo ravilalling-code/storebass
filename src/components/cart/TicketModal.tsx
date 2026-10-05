@@ -24,6 +24,7 @@ export function TicketModal() {
     ticketData.items.forEach(i => {
       rawMsg += `• ${i.title} — *S/ ${Number(i.price).toFixed(2)}*\n`;
     });
+    rawMsg += `\n📝 *DETALLE Y ENTREGA:*\n${ticketData.detalle}\n`;
     rawMsg += `\n💰 *TOTAL EN SOLES:* S/ ${Number(ticketData.total || 0).toFixed(2)}\n`;
     rawMsg += `✈️ *VIAJE A USA:* Salida 20 Oct ➔ Entrega en Lima 29 Oct\n`;
     rawMsg += `🛡️ *GARANTÍA:* Tiendas oficiales USA con boleta/recibo original\n`;
@@ -120,6 +121,9 @@ export function TicketModal() {
             </div>
           </div>
 
+          {ticketData.items && ticketData.items.length > 0 && <div className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap break-words">
+            <span className="block font-bold mb-1">Información del pedido y entrega</span>{ticketData.detalle}
+          </div>}
           {/* Total en Soles */}
           <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between">
             <div>
@@ -127,7 +131,7 @@ export function TicketModal() {
                 Total en Soles:
               </span>
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-                Precio final garantizado
+                Productos · delivery por coordinar
               </span>
             </div>
             <div className="text-xl font-black text-amber-600 dark:text-amber-400">

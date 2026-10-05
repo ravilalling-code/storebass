@@ -1346,8 +1346,10 @@ export default function AdminPage() {
                                 {t.telefono}
                               </div>
                             </td>
-                            <td className="p-4 text-xs max-w-xs text-slate-300 truncate">
-                              {t.detalle}
+                            <td className="p-4 text-xs max-w-xs text-slate-300">
+                              <details><summary className="cursor-pointer font-bold text-amber-400">Ver pedido, entrega y observaciones</summary>
+                                <p className="mt-2 whitespace-pre-wrap break-words">{t.detalle}</p>
+                              </details>
                             </td>
                             <td className="p-4 font-black text-slate-100 text-xs">
                               S/ {parseFloat(t.total || 0).toFixed(2)}
@@ -1659,6 +1661,7 @@ export default function AdminPage() {
                     <option value="En stock en Lima">En stock en Lima (inmediato)</option>
                     <option value="Llega el 29 de Octubre">Llega el 29 de Octubre (viaje)</option>
                     <option value="Últimos cupos">Últimos cupos</option>
+                    <option value="Solo a pedido">Solo a pedido</option>
                   </select>
                 </div>
               </div>

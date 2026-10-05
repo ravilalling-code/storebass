@@ -1,3 +1,4 @@
+import { DeliveryCoordination } from '@/components/orders/DeliveryCoordination';
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -411,6 +412,7 @@ export function TrackingPreview() {
               </div>
             )}
 
+            <DeliveryCoordination ticketCode={foundTicket.ticket_code || foundTicket.ticketId} />
             {/* Ficha resumida del pedido consultado */}
             <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3">

@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { useCart } from '@/context/CartContext';
+import { OrderPreferencesFields } from '@/components/orders/OrderPreferencesFields';
+import { EMPTY_ORDER_PREFERENCES, formatOrderPreferences } from '@/lib/order-preferences';
 
 interface LinkItem {
   url: string;
@@ -17,6 +19,8 @@ export function QuoteLinkSection() {
   const [userPhone, setUserPhone] = useState('');
   const [detectedStore, setDetectedStore] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [preferences, setPreferences] = useState(EMPTY_ORDER_PREFERENCES);
+  const [preferenceError, setPreferenceError] = useState('');
 
   const detectStoreFromUrl = (url: string) => {
     const lower = url.toLowerCase();
@@ -72,6 +76,11 @@ export function QuoteLinkSection() {
       )
       .join('\n');
 
+    if (loading) return;
+    let preferenceDetails: string;
+    try { preferenceDetails = formatOrderPreferences(preferences); }
+    catch (error) { setPreferenceError(error instanceof Error ? error.message : 'Revisa los datos de entrega.'); return; }
+    setPreferenceError('');
     setLoading(true);
     try {
       const ticket = await generateTicket({
@@ -79,7 +88,7 @@ export function QuoteLinkSection() {
         telefono: userPhone.trim(),
         origen: 'Web',
         tipo: 'cotizacion_links',
-        detalle: detailText,
+        detalle: `${detailText}\n\n${preferenceDetails}`,
         total: 0,
         items: [],
       });
@@ -87,7 +96,7 @@ export function QuoteLinkSection() {
       // Enviar automáticamente a Johan por WhatsApp con los links a cotizar y acceso al CRM
       const ticketCode = ticket.ticket_code || ticket.ticketId;
       const waMsg = encodeURIComponent(
-        `🔗 *NUEVA COTIZACIÓN POR LINK — STORE BASS* 🇺🇸✈️🇵🇪\n─────────────────────────\n🎫 *TICKET CONSECUTIVO:* #${ticketCode}\n👤 *CLIENTE:* ${userName.trim()}\n📱 *WHATSAPP:* ${userPhone.trim()}\n📅 *FECHA:* ${ticket.fecha || ''}\n─────────────────────────\n🔗 *ENLACES DE USA A COTIZAR:*\n${detailText}\n\n✈️ *VIAJE A USA:* Salida 20 Oct ➔ Entrega en Lima 29 Oct\n─────────────────────────\n💻 *VER Y COTIZAR EN EL CRM:* https://storebass.vercel.app/admin\n─────────────────────────\n👋 ¡Hola Johan Tovar! Acabo de enviar estos enlaces desde la web para cotizar. ¿Cuál es el precio final en soles y la disponibilidad? 🙌`
+        `🔗 *NUEVA COTIZACIÓN POR LINK — STORE BASS* 🇺🇸✈️🇵🇪\n─────────────────────────\n🎫 *TICKET CONSECUTIVO:* #${ticketCode}\n👤 *CLIENTE:* ${userName.trim()}\n📱 *WHATSAPP:* ${userPhone.trim()}\n📅 *FECHA:* ${ticket.fecha || ''}\n─────────────────────────\n🔗 *ENLACES DE USA A COTIZAR:*\n${detailText}\n\n${preferenceDetails}\n\n✈️ *VIAJE A USA:* Salida 20 Oct ➔ Entrega en Lima 29 Oct\n─────────────────────────\n💻 *VER Y COTIZAR EN EL CRM:* ${window.location.origin}/admin\n─────────────────────────\n👋 ¡Hola Johan Tovar! Acabo de enviar estos enlaces desde la web para cotizar. ¿Cuál es el precio final en soles y la disponibilidad? 🙌`
       );
       window.open(`https://wa.me/51960759244?text=${waMsg}`, '_blank');
     } catch (err) {
@@ -266,6 +275,8 @@ export function QuoteLinkSection() {
               </div>
             </div>
 
+            <OrderPreferencesFields value={preferences} onChange={setPreferences} dark disabled={loading} />
+            {preferenceError && <p role="alert" className="text-xs text-rose-400">{preferenceError}</p>}
             {/* Botón de Envío */}
             <div className="pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <button

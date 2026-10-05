@@ -1,5 +1,7 @@
 'use client';
 
+import { DeliveryCoordination } from '@/components/orders/DeliveryCoordination';
+
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Header } from '@/components/layout/Header';
@@ -505,6 +507,7 @@ export default function TrackingPage() {
           </div>
         </div>
 
+        {tracking && <DeliveryCoordination ticketCode={tracking.code} />}
         {/* WhatsApp concierge card */}
         <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">

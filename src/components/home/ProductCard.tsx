@@ -92,7 +92,7 @@ export function ProductCard({ product, badge, badgeColor, onOpenDetail }: Produc
           ) : (
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
               <span className="material-symbols-outlined text-[11px]">flight_land</span>
-              <span>Llega el 29 de Octubre</span>
+              <span>{product.delivery || 'Entrega por coordinar'}</span>
             </span>
           )}
 

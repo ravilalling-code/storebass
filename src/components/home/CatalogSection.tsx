@@ -118,6 +118,7 @@ export function CatalogSection({
 
     // 2. Filtro de Disponibilidad secundaria
     if (selectedDisp === 'stock' && !p.delivery?.toLowerCase().includes('stock')) return false;
+    if (selectedDisp === 'pedido' && p.delivery?.toLowerCase() !== 'solo a pedido') return false;
     if (selectedDisp === 'viaje' && !p.delivery?.toLowerCase().includes('octubre')) return false;
 
     // 3. Filtro de Búsqueda
@@ -184,7 +185,7 @@ export function CatalogSection({
 
       {/* 3. Barra de Control Compacta (Ordenar y Disponibilidad) */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-darkElevated/50 border border-slate-200/60 dark:border-darkBorder/60 text-xs">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="material-symbols-outlined text-slate-400 text-base">tune</span>
           <span className="font-bold text-slate-600 dark:text-slate-300">Filtro rápido:</span>
           <button
@@ -207,6 +208,9 @@ export function CatalogSection({
           >
             Llegada 29 Octubre
           </button>
+          <button type="button" onClick={() => setSelectedDisp(selectedDisp === 'pedido' ? 'todos' : 'pedido')}
+            className={`px-3 py-2 rounded-xl text-xs font-bold border ${selectedDisp === 'pedido' ? 'bg-amber-500 text-slate-950 border-amber-500' : 'text-slate-500 border-slate-300 dark:border-slate-700'}`}>Solo a pedido</button>
+
         </div>
 
         {/* Ordenar */}

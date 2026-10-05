@@ -2,12 +2,16 @@
 
 import React, { useState } from 'react';
 import { useCart } from '@/context/CartContext';
+import { OrderPreferencesFields } from '@/components/orders/OrderPreferencesFields';
+import { EMPTY_ORDER_PREFERENCES, formatOrderPreferences } from '@/lib/order-preferences';
 
 export function CartDrawer() {
   const { isCartOpen, closeCart, items, removeFromCart, total, count, generateTicket, clearCart } = useCart();
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [loading, setLoading] = useState(false);
+  const [preferences, setPreferences] = useState(EMPTY_ORDER_PREFERENCES);
+  const [preferenceError, setPreferenceError] = useState('');
 
   const handleCheckout = async () => {
     if (items.length === 0) return;
@@ -16,6 +20,11 @@ export function CartDrawer() {
       return;
     }
 
+    if (loading) return;
+    let preferenceDetails: string;
+    try { preferenceDetails = formatOrderPreferences(preferences); }
+    catch (error) { setPreferenceError(error instanceof Error ? error.message : 'Revisa los datos de entrega.'); return; }
+    setPreferenceError('');
     setLoading(true);
     try {
       const ticket = await generateTicket({
@@ -23,6 +32,7 @@ export function CartDrawer() {
         telefono: customerPhone.trim(),
         origen: 'Web',
         tipo: 'compra_lista',
+        detalle: `${items.map(i => i.title).join(', ')}\n\n${preferenceDetails}`,
         items,
         total,
       });
@@ -30,12 +40,13 @@ export function CartDrawer() {
       closeCart();
       setCustomerName('');
       setCustomerPhone('');
+      setPreferences(EMPTY_ORDER_PREFERENCES);
 
       // Enviar automáticamente a Johan por WhatsApp con el ticket y acceso directo al CRM
       const ticketCode = ticket.ticket_code || ticket.ticketId;
       const itemsList = items.map(i => `• ${i.title} — *S/ ${Number(i.price).toFixed(2)}*`).join('\n');
       const waMsg = encodeURIComponent(
-        `🛍️ *NUEVO TICKET GENERADO — STORE BASS* 🇺🇸✈️🇵🇪\n─────────────────────────\n🎫 *TICKET CONSECUTIVO:* #${ticketCode}\n👤 *CLIENTE:* ${customerName.trim()}\n📱 *WHATSAPP:* ${customerPhone.trim()}\n📅 *FECHA:* ${ticket.fecha || ''}\n─────────────────────────\n📦 *PRODUCTOS DEL PEDIDO:*\n${itemsList}\n\n💰 *TOTAL EN SOLES:* S/ ${Number(total).toFixed(2)}\n✈️ *ENTREGA EN LIMA:* 29 de Octubre\n🛡️ *COMPRA OFICIAL:* Tiendas autorizadas en USA\n─────────────────────────\n💻 *VER Y CONFIRMAR EN EL CRM:* https://storebass.vercel.app/admin\n─────────────────────────\n👋 ¡Hola Johan Tovar! Acabo de registrar mi pedido en la web. Deseo coordinar el pago y asegurar mi cupo para este viaje. 🙌`
+        `🛍️ *NUEVO TICKET GENERADO — STORE BASS* 🇺🇸✈️🇵🇪\n─────────────────────────\n🎫 *TICKET CONSECUTIVO:* #${ticketCode}\n👤 *CLIENTE:* ${customerName.trim()}\n📱 *WHATSAPP:* ${customerPhone.trim()}\n📅 *FECHA:* ${ticket.fecha || ''}\n─────────────────────────\n📦 *PRODUCTOS DEL PEDIDO:*\n${itemsList}\n\n${preferenceDetails}\n\n💰 *TOTAL EN SOLES:* S/ ${Number(total).toFixed(2)}\n✈️ *ENTREGA EN LIMA:* 29 de Octubre\n🛡️ *COMPRA OFICIAL:* Tiendas autorizadas en USA\n─────────────────────────\n💻 *VER Y CONFIRMAR EN EL CRM:* ${window.location.origin}/admin\n─────────────────────────\n👋 ¡Hola Johan Tovar! Acabo de registrar mi pedido en la web. Deseo coordinar el pago y asegurar mi cupo para este viaje. 🙌`
       );
       window.open(`https://wa.me/51960759244?text=${waMsg}`, '_blank');
     } catch (err) {
@@ -57,10 +68,10 @@ export function CartDrawer() {
 
       {/* Drawer Panel */}
       <div
-        className="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-darkCard border-l border-slate-200 dark:border-darkBorder shadow-2xl z-50 flex flex-col justify-between animate-drawer"
+        className="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-darkCard border-l border-slate-200 dark:border-darkBorder shadow-2xl z-50 flex flex-col overflow-y-auto animate-drawer"
       >
         {/* Cabecera del Drawer */}
-        <div className="p-5 border-b border-slate-200 dark:border-darkBorder flex items-center justify-between">
+        <div className="p-5 shrink-0 border-b border-slate-200 dark:border-darkBorder flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-amber-500 text-xl">shopping_cart</span>
             <h3 className="text-sm font-black text-slate-900 dark:text-white font-display">
@@ -77,7 +88,7 @@ export function CartDrawer() {
         </div>
 
         {/* Lista de Productos */}
-        <div className="p-5 flex-1 overflow-y-auto space-y-3">
+        <div className="p-5 space-y-3">
           {count === 0 ? (
             <div className="text-center py-16 text-slate-400 space-y-2">
               <span className="material-symbols-outlined text-4xl">remove_shopping_cart</span>
@@ -116,7 +127,7 @@ export function CartDrawer() {
               <span className="font-bold text-slate-900 dark:text-white">S/ {total.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-bold">
-              <span>Precio final:</span>
+              <span>Precio de productos:</span>
               <span>Sin cobros ocultos</span>
             </div>
             <div className="flex justify-between pt-2 border-t border-slate-200 dark:border-slate-800 text-sm font-black text-slate-900 dark:text-white">
@@ -150,6 +161,8 @@ export function CartDrawer() {
                 </div>
               </div>
 
+              <OrderPreferencesFields value={preferences} onChange={setPreferences} disabled={loading} />
+              {preferenceError && <p role="alert" className="text-xs text-rose-500">{preferenceError}</p>}
               <button
                 onClick={handleCheckout}
                 disabled={loading}
