@@ -105,14 +105,6 @@ export function Header({ onSearch }: HeaderProps) {
 
           {/* Acciones Derecha */}
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-            <a
-              href="#seguimiento"
-              title="Seguimiento de tu pedido"
-              className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-amber-500 dark:hover:text-amber-400 px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <span className="material-symbols-outlined text-base text-blue-500 animate-pulse">radar</span>
-              <span>Seguimiento</span>
-            </a>
 
             {/* Ícono de Login */}
             <Link

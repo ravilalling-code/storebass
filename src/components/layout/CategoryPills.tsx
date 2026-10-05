@@ -24,11 +24,18 @@ export function CategoryPills({
   activeCategory = 'todos',
   onSelectCategory,
 }: CategoryPillsProps) {
+  const scrollToCatalog = () => {
+    const el = document.getElementById('catalogo');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const handleClick = (e: React.MouseEvent, catSlug: string) => {
+    e.preventDefault();
     if (onSelectCategory) {
-      e.preventDefault();
       onSelectCategory(catSlug);
     }
+    // Pequeño delay para que React actualice el estado antes del scroll
+    setTimeout(scrollToCatalog, 80);
   };
 
   return (
