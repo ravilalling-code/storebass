@@ -172,9 +172,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           seq = res.correlativo;
           fecha = res.fecha || fecha;
           localStorage.setItem('storebass_ticket_seq', (seq + 1).toString());
+        } else {
+          // Respaldo directo en tabla tickets de Supabase si la función RPC no está disponible
+          await supabase.from('tickets').insert([
+            {
+              ticket_code: ticketCode,
+              correlativo: seq,
+              origen,
+              cliente,
+              telefono,
+              detalle: detalle || (ticketItems.length > 0 ? ticketItems.map(i => i.title).join(', ') : 'Pedido web'),
+              total: calcTotal,
+              estado: 'Pendiente',
+              tipo,
+              items: ticketItems,
+            },
+          ]);
+          localStorage.setItem('storebass_ticket_seq', (seq + 1).toString());
         }
       } catch (e) {
-        console.warn('[STORE BASS] Fallo RPC Supabase, usando correlativo local:', e);
+        console.warn('[STORE BASS] Fallo conexión Supabase tickets:', e);
       }
     }
 

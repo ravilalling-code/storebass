@@ -1,4 +1,5 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 let supabaseInstance: SupabaseClient | null = null;
 
@@ -25,12 +26,8 @@ export function getSupabaseBrowserClient(): SupabaseClient | null {
   }
 
   try {
-    supabaseInstance = createClient(url, key, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-      },
-    });
+    // createBrowserClient de @supabase/ssr gestiona automáticamente cookies de sesión para Next.js
+    supabaseInstance = createBrowserClient(url, key);
     return supabaseInstance;
   } catch (err) {
     console.warn('[STORE BASS] Error inicializando cliente Supabase en navegador:', err);

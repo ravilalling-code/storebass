@@ -7,6 +7,8 @@ import { Footer } from '@/components/layout/Footer';
 import { CartDrawer } from '@/components/cart/CartDrawer';
 import { TicketModal } from '@/components/cart/TicketModal';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getWhatsAppLink } from '@/lib/constants';
 
 interface TrackingData {
   code: string;
@@ -97,29 +99,82 @@ export default function TrackingPage() {
   const [hasSearched, setHasSearched] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const handleSearch = (e: React.FormEvent) => {
+  const [isSearching, setIsSearching] = useState(false);
+
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = inputCode.trim().toUpperCase();
     if (!code) return;
 
     setHasSearched(true);
+    setIsSearching(true);
     setErrorMessage('');
 
-    // 1. Buscar en tickets reales de localStorage
     let found = null;
-    try {
-      const saved = localStorage.getItem('storebass_tickets');
-      if (saved) {
-        const tickets = JSON.parse(saved);
-        if (Array.isArray(tickets)) {
-          found = tickets.find((t: any) => {
-            const tCode = (t.ticket_code || t.ticketId || '').toUpperCase();
-            return tCode === code || tCode.replace('#', '') === code.replace('#', '');
-          });
+    const cleanCode = code.replace('#', '');
+    const cleanPhoneDigits = code.replace(/[^0-9]/g, '');
+
+    // 1. Consultar a Supabase Cloud en tiempo real
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      try {
+        const { data: rpcData, error: rpcError } = await supabase.rpc('fn_track_order', {
+          p_code: cleanCode,
+          p_phone: cleanPhoneDigits.length >= 4 ? cleanPhoneDigits : null,
+        });
+
+        if (!rpcError && rpcData && rpcData.length > 0) {
+          const item = rpcData[0];
+          found = {
+            ticket_code: item.ticket_code,
+            ticketId: item.ticket_code,
+            estado: item.estado,
+            detalle: item.detalle,
+            cliente: item.cliente_primer_nombre,
+            tipo: item.tipo,
+          };
+        } else {
+          // Consulta directa de respaldo a tabla tickets
+          const queryTarget = cleanCode.startsWith('TK-') ? cleanCode : `TK-${cleanCode}`;
+          const { data: dbData } = await supabase
+            .from('tickets')
+            .select('ticket_code, correlativo, cliente, estado, detalle, tipo, created_at')
+            .eq('ticket_code', queryTarget)
+            .limit(1);
+
+          if (dbData && dbData.length > 0) {
+            const item = dbData[0];
+            found = {
+              ticket_code: item.ticket_code,
+              ticketId: item.ticket_code,
+              estado: item.estado,
+              detalle: item.detalle,
+              cliente: item.cliente?.split(' ')[0] || 'Cliente',
+              tipo: item.tipo,
+            };
+          }
         }
+      } catch (err) {
+        console.warn('Error querying tracking in Supabase:', err);
       }
-    } catch (err) {
-      console.error(err);
+    }
+
+    // 2. Buscar en tickets locales de respaldo
+    if (!found) {
+      try {
+        const saved = localStorage.getItem('storebass_tickets');
+        if (saved) {
+          const tickets = JSON.parse(saved);
+          if (Array.isArray(tickets)) {
+            found = tickets.find((t: any) => {
+              const tCode = (t.ticket_code || t.ticketId || '').toUpperCase();
+              return tCode === code || tCode.replace('#', '') === code.replace('#', '');
+            });
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
     }
 
     if (found) {
@@ -136,6 +191,7 @@ export default function TrackingPage() {
       setTracking(null);
       setErrorMessage(`No se encontró ningún pedido o ticket registrado con el código "${code}".`);
     }
+    setIsSearching(false);
   };
 
   return (

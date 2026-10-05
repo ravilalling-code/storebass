@@ -1,9 +1,68 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { WhatsAppIcon } from '@/components/ui/WhatsAppIcon';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getWhatsAppLink } from '@/lib/constants';
 
 export function FlightScheduleBanner() {
+  const [tripData, setTripData] = useState({
+    dateIda: '20 de Octubre',
+    dateRegreso: '29 de Octubre',
+    status: 'Cupos Abiertos',
+  });
+
+  useEffect(() => {
+    const loadTripConfig = async () => {
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        try {
+          const { data, error } = await supabase
+            .from('trip_config')
+            .select('*')
+            .limit(1)
+            .single();
+
+          if (!error && data) {
+            setTripData({
+              dateIda: data.date_ida || '20 de Octubre',
+              dateRegreso: data.date_regreso || '29 de Octubre',
+              status: data.status || 'Cupos Abiertos',
+            });
+            return;
+          }
+        } catch (e) {
+          console.warn('Error loading trip config from Supabase:', e);
+        }
+      }
+
+      if (typeof window !== 'undefined') {
+        const local = localStorage.getItem('storebass_trip_settings');
+        if (local) {
+          try {
+            const parsed = JSON.parse(local);
+            setTripData({
+              dateIda: parsed.startDate || '20 de Octubre',
+              dateRegreso: parsed.returnDate || '29 de Octubre',
+              status: 'Cupos Abiertos',
+            });
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+    };
+
+    loadTripConfig();
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storebass_trip_settings_updated', loadTripConfig);
+      return () => {
+        window.removeEventListener('storebass_trip_settings_updated', loadTripConfig);
+      };
+    }
+  }, []);
+
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 py-2 sm:py-4">
       {/* Boarding Pass / Tarjeta de Vuelo Confirmado en diseño apaisado */}
@@ -18,7 +77,7 @@ export function FlightScheduleBanner() {
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-wider border border-emerald-500/40 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>Cupos Abiertos</span>
+                <span>{tripData.status}</span>
               </span>
               <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-bold border border-amber-500/20">
                 Viaje Oficial
@@ -50,7 +109,7 @@ export function FlightScheduleBanner() {
                 <span className="material-symbols-outlined text-sm text-amber-400">flight_takeoff</span>
               </div>
               <div className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                20 de Octubre
+                {tripData.dateIda}
               </div>
               <div className="flex items-center gap-2 text-xs text-slate-300">
                 <span className="font-bold text-amber-400">LIM</span>
@@ -69,7 +128,7 @@ export function FlightScheduleBanner() {
                 <span className="material-symbols-outlined text-sm text-emerald-400">flight_land</span>
               </div>
               <div className="text-xl sm:text-2xl font-black text-amber-400 tracking-tight">
-                29 de Octubre
+                {tripData.dateRegreso}
               </div>
               <div className="flex items-center gap-2 text-xs text-slate-300">
                 <span className="font-bold text-white">MIA</span>
@@ -77,7 +136,7 @@ export function FlightScheduleBanner() {
                 <span className="font-bold text-emerald-400">En mis manos a Lima</span>
               </div>
               <p className="text-[11px] text-slate-300">
-                Entregas personales y envíos a todo el Perú desde el 29 de Octubre.
+                Entregas personales y envíos a todo el Perú desde el {tripData.dateRegreso}.
               </p>
             </div>
           </div>

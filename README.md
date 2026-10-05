@@ -2,7 +2,7 @@
 
 Web oficial y suite de comercio electrónico para **STORE BASS**, personal shopper y courier que viaja personalmente a Estados Unidos para traer productos 100% originales a Perú con precio final en Soles, aduanas incluidas y fecha de entrega garantizada.
 
-Construido con **Next.js 15 (App Router)**, **TypeScript**, **Tailwind CSS 4** y conectado a **Supabase**.
+Construido con **Next.js (App Router)**, **TypeScript**, **Tailwind CSS 4** y conectado a **Supabase**.
 
 ---
 

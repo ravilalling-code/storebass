@@ -1,13 +1,14 @@
-'use client';
-
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getWhatsAppLink } from '@/lib/constants';
 
 export function TrackingPreview() {
   const [orderCode, setOrderCode] = useState('');
   const [queriedCode, setQueriedCode] = useState('');
   const [foundTicket, setFoundTicket] = useState<any | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   const steps = [
     {
@@ -68,36 +69,88 @@ export function TrackingPreview() {
     }
   };
 
-  const handleTrack = (e?: React.FormEvent) => {
+  const handleTrack = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const query = orderCode.trim().toUpperCase();
     if (!query) return;
 
     setQueriedCode(query);
     setHasSearched(true);
+    setIsSearching(true);
 
-    // Buscar ticket real en localStorage
     let match = null;
-    try {
-      const saved = localStorage.getItem('storebass_tickets');
-      if (saved) {
-        const tickets = JSON.parse(saved);
-        if (Array.isArray(tickets)) {
-          match = tickets.find((t: any) => {
-            const tCode = (t.ticket_code || t.ticketId || '').toUpperCase();
-            const cleanQuery = query.replace('#', '');
-            const cleanTCode = tCode.replace('#', '');
-            const tPhone = (t.telefono || '').replace(/[^0-9]/g, '');
-            const qPhone = query.replace(/[^0-9]/g, '');
-            return cleanTCode === cleanQuery || (qPhone.length >= 8 && tPhone.includes(qPhone));
-          });
+    const cleanQuery = query.replace('#', '');
+    const cleanPhoneDigits = query.replace(/[^0-9]/g, '');
+
+    // 1. Consultar a Supabase Cloud en tiempo real
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      try {
+        const { data: rpcData, error: rpcError } = await supabase.rpc('fn_track_order', {
+          p_code: cleanQuery,
+          p_phone: cleanPhoneDigits.length >= 4 ? cleanPhoneDigits : null,
+        });
+
+        if (!rpcError && rpcData && rpcData.length > 0) {
+          const item = rpcData[0];
+          match = {
+            ticket_code: item.ticket_code,
+            ticketId: item.ticket_code,
+            estado: item.estado,
+            detalle: item.detalle,
+            cliente: item.cliente_primer_nombre,
+            fecha: item.fecha,
+            tipo: item.tipo,
+          };
+        } else {
+          // Consulta fallback directa a tabla tickets
+          const queryTarget = cleanQuery.startsWith('TK-') ? cleanQuery : `TK-${cleanQuery}`;
+          const { data: dbData } = await supabase
+            .from('tickets')
+            .select('ticket_code, correlativo, cliente, estado, detalle, tipo, created_at')
+            .eq('ticket_code', queryTarget)
+            .limit(1);
+
+          if (dbData && dbData.length > 0) {
+            const item = dbData[0];
+            match = {
+              ticket_code: item.ticket_code,
+              ticketId: item.ticket_code,
+              estado: item.estado,
+              detalle: item.detalle,
+              cliente: item.cliente?.split(' ')[0] || 'Cliente',
+              fecha: item.created_at,
+              tipo: item.tipo,
+            };
+          }
         }
+      } catch (err) {
+        console.warn('Error querying Supabase for tracking:', err);
       }
-    } catch (err) {
-      console.error(err);
+    }
+
+    // 2. Fallback a tickets de localStorage
+    if (!match) {
+      try {
+        const saved = localStorage.getItem('storebass_tickets');
+        if (saved) {
+          const tickets = JSON.parse(saved);
+          if (Array.isArray(tickets)) {
+            match = tickets.find((t: any) => {
+              const tCode = (t.ticket_code || t.ticketId || '').toUpperCase();
+              const cleanTCode = tCode.replace('#', '');
+              const tPhone = (t.telefono || '').replace(/[^0-9]/g, '');
+              return cleanTCode === cleanQuery || (cleanPhoneDigits.length >= 8 && tPhone.includes(cleanPhoneDigits));
+            });
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
     }
 
     setFoundTicket(match || null);
+    setIsSearching(false);
   };
 
   const handleClear = () => {

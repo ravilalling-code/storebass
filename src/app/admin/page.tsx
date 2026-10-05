@@ -12,13 +12,15 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 export default function AdminPage() {
   const { showToast } = useToast();
 
-  // Authentication State
+  // Authentication State via Supabase Auth (Seguridad en Servidor)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [authChecked, setAuthChecked] = useState<boolean>(false);
-  const [loginUser, setLoginUser] = useState<string>('');
+  const [loginEmail, setLoginEmail] = useState<string>('');
   const [loginPassword, setLoginPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>('');
+  const [loggingIn, setLoggingIn] = useState<boolean>(false);
+  const [adminEmail, setAdminEmail] = useState<string>('');
 
   // Tab Navigation State
   const [currentTab, setCurrentTab] = useState<
@@ -97,52 +99,47 @@ export default function AdminPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const isAuthSession = sessionStorage.getItem('storebass_admin_auth');
-      const isAuthLocal = localStorage.getItem('storebass_admin_auth');
-      setIsAuthenticated(isAuthSession === 'true' || isAuthLocal === 'true');
-      setAuthChecked(true);
-
-      // Load products
-      const savedProds = localStorage.getItem('storebass_products');
-      if (savedProds) {
-        try {
-          setProducts(JSON.parse(savedProds));
-        } catch (e) {
-          console.error(e);
-        }
-      }
-
-      // Load tickets (Limpieza de tickets de prueba para producción)
-      const savedTickets = localStorage.getItem('storebass_tickets');
-      if (savedTickets) {
-        try {
-          const parsed = JSON.parse(savedTickets);
-          // Filtrar cualquier ticket dummy previo de prueba
-          const realTickets = Array.isArray(parsed)
-            ? parsed.filter((t: any) => !['TK-1001', 'TK-1002', 'TK-1003'].includes(t?.ticketId))
-            : [];
-          setTickets(realTickets);
-          localStorage.setItem('storebass_tickets', JSON.stringify(realTickets));
-        } catch (e) {
-          console.error(e);
-        }
-      }
-
-      // Load ads from localStorage
-      const savedAds = localStorage.getItem('storebass_ads');
-      if (savedAds) {
-        try {
-          const parsed = JSON.parse(savedAds);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setAds(parsed);
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      }
-
-      // Try reading tickets & ads from Supabase Cloud if available
+      // 1. Validar Sesión Real con Supabase Auth
       const supabase = getSupabaseBrowserClient();
       if (supabase) {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user) {
+            setIsAuthenticated(true);
+            setAdminEmail(session.user.email || 'Johan Tovar');
+          }
+          setAuthChecked(true);
+        });
+
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+          setIsAuthenticated(!!session?.user);
+          setAdminEmail(session?.user?.email || 'Johan Tovar');
+        });
+
+        // 2. Cargar Catálogo de Productos desde Supabase Cloud
+        supabase
+          .from('products')
+          .select('*')
+          .order('display_order', { ascending: true })
+          .then(({ data, error }) => {
+            if (!error && data && data.length > 0) {
+              setProducts(data);
+              localStorage.setItem('storebass_products', JSON.stringify(data));
+            } else {
+              // Fallback a localStorage si la tabla aún está vacía
+              const savedProds = localStorage.getItem('storebass_products');
+              if (savedProds) {
+                try {
+                  setProducts(JSON.parse(savedProds));
+                } catch (e) {
+                  console.error(e);
+                }
+              }
+            }
+          });
+
+        // 3. Cargar Tickets desde Supabase Cloud
         supabase
           .from('tickets')
           .select('*')
@@ -152,9 +149,23 @@ export default function AdminPage() {
             if (!error && data && data.length > 0) {
               setTickets(data);
               localStorage.setItem('storebass_tickets', JSON.stringify(data));
+            } else {
+              const savedTickets = localStorage.getItem('storebass_tickets');
+              if (savedTickets) {
+                try {
+                  const parsed = JSON.parse(savedTickets);
+                  const realTickets = Array.isArray(parsed)
+                    ? parsed.filter((t: any) => !['TK-1001', 'TK-1002', 'TK-1003'].includes(t?.ticketId))
+                    : [];
+                  setTickets(realTickets);
+                } catch (e) {
+                  console.error(e);
+                }
+              }
             }
           });
 
+        // 4. Cargar Banners y Tendencias desde Supabase Cloud
         supabase
           .from('ads')
           .select('*')
@@ -163,69 +174,161 @@ export default function AdminPage() {
             if (!error && data && data.length > 0) {
               setAds(data);
               localStorage.setItem('storebass_ads', JSON.stringify(data));
+            } else {
+              const savedAds = localStorage.getItem('storebass_ads');
+              if (savedAds) {
+                try {
+                  const parsed = JSON.parse(savedAds);
+                  if (Array.isArray(parsed) && parsed.length > 0) setAds(parsed);
+                } catch (e) {
+                  console.error(e);
+                }
+              }
             }
           });
+
+        return () => subscription.unsubscribe();
+      } else {
+        setAuthChecked(true);
       }
     }
   }, []);
 
-  // Handle Login Form
-  const handleLogin = (e: React.FormEvent) => {
+  // Handle Login con Supabase Auth (Sin contraseñas en frontend)
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
-    const u = loginUser.trim().toLowerCase();
-    const p = loginPassword.trim();
-    if (u === 'admin' && p === 'adminpj2026') {
-      sessionStorage.setItem('storebass_admin_auth', 'true');
-      localStorage.setItem('storebass_admin_auth', 'true');
-      setIsAuthenticated(true);
-      showToast('Bienvenido', 'Acceso al panel administrativo concedido');
-    } else {
-      setLoginError('Usuario o contraseña incorrectos.');
-      showToast('Acceso denegado', 'Credenciales no válidas');
+    setLoggingIn(true);
+
+    const email = loginEmail.trim().toLowerCase();
+    const password = loginPassword.trim();
+
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setLoginError('Error de conexión con el servidor Supabase.');
+      setLoggingIn(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error || !data.user) {
+        setLoginError(
+          error?.message === 'Invalid login credentials'
+            ? 'Credenciales incorrectas. Verifica tu correo y contraseña en Supabase Auth.'
+            : (error?.message || 'Error al iniciar sesión.')
+        );
+        showToast('Acceso denegado', 'Credenciales no válidas');
+      } else {
+        setIsAuthenticated(true);
+        setAdminEmail(data.user.email || 'Johan Tovar');
+        showToast('Bienvenido Johan', `Sesión iniciada como ${data.user.email}`);
+      }
+    } catch (err: any) {
+      setLoginError('Error inesperado al conectar con Supabase Auth.');
+      console.error(err);
+    } finally {
+      setLoggingIn(false);
     }
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('storebass_admin_auth');
-    localStorage.removeItem('storebass_admin_auth');
+  const handleLogout = async () => {
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
     setIsAuthenticated(false);
+    setAdminEmail('');
     showToast('Sesión cerrada', 'Has salido del panel de administración');
   };
 
   // Product CRUD
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prodForm.name || prodForm.price <= 0) {
       showToast('Campos incompletos', 'Ingresa nombre y precio válido');
       return;
     }
 
+    const supabase = getSupabaseBrowserClient();
     let updated: any[];
     if (editingProductId) {
       updated = products.map((p) =>
         p.id === editingProductId ? { ...p, ...prodForm } : p
       );
       showToast('Producto actualizado', prodForm.name);
+
+      if (supabase) {
+        try {
+          await supabase
+            .from('products')
+            .update({
+              name: prodForm.name,
+              category: prodForm.category,
+              delivery: prodForm.delivery,
+              regular_price: prodForm.regularPrice,
+              price: prodForm.price,
+              img: prodForm.img,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', editingProductId);
+        } catch (err) {
+          console.warn('Error al actualizar producto en Supabase:', err);
+        }
+      }
     } else {
+      const newId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
       const newP = {
-        id: Date.now(),
+        id: newId,
         ...prodForm,
       };
       updated = [newP, ...products];
       showToast('Nuevo producto guardado', prodForm.name);
+
+      if (supabase) {
+        try {
+          await supabase.from('products').insert([
+            {
+              id: newId,
+              name: prodForm.name,
+              category: prodForm.category,
+              delivery: prodForm.delivery,
+              regular_price: prodForm.regularPrice,
+              price: prodForm.price,
+              img: prodForm.img,
+            },
+          ]);
+        } catch (err) {
+          console.warn('Error al insertar producto en Supabase:', err);
+        }
+      }
     }
     setProducts(updated);
     localStorage.setItem('storebass_products', JSON.stringify(updated));
+    window.dispatchEvent(new Event('storebass_products_updated'));
     setProductModalOpen(false);
     setEditingProductId(null);
   };
 
-  const handleDeleteProduct = (id: number) => {
+  const handleDeleteProduct = async (id: number | string) => {
     if (!confirm('¿Estás seguro de eliminar este producto del catálogo?')) return;
     const updated = products.filter((p) => p.id !== id);
     setProducts(updated);
     localStorage.setItem('storebass_products', JSON.stringify(updated));
+    window.dispatchEvent(new Event('storebass_products_updated'));
+
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      try {
+        await supabase.from('products').delete().eq('id', id);
+      } catch (err) {
+        console.warn('Error al eliminar producto en Supabase:', err);
+      }
+    }
     showToast('Producto eliminado');
   };
 
@@ -243,24 +346,81 @@ export default function AdminPage() {
   };
 
   // Category CRUD
-  const handleSaveCategory = (e: React.FormEvent) => {
+  const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!catForm.name) return;
     let updated: any[];
+    const supabase = getSupabaseBrowserClient();
+
     if (editingCatId) {
       updated = categories.map((c) =>
         c.id === editingCatId ? { ...c, ...catForm } : c
       );
       showToast('Categoría modificada', catForm.name);
+
+      if (supabase) {
+        try {
+          await supabase
+            .from('categories')
+            .update({
+              name: catForm.name,
+              icon: catForm.icon,
+              description: catForm.desc,
+              active: catForm.active,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', editingCatId);
+        } catch (err) {
+          console.warn('Error al actualizar categoría en Supabase:', err);
+        }
+      }
     } else {
       const newC = { id: Date.now(), ...catForm };
       updated = [...categories, newC];
       showToast('Nueva categoría creada', catForm.name);
+
+      if (supabase) {
+        try {
+          await supabase.from('categories').insert([
+            {
+              name: catForm.name,
+              icon: catForm.icon,
+              description: catForm.desc,
+              active: catForm.active,
+            },
+          ]);
+        } catch (err) {
+          console.warn('Error al insertar categoría en Supabase:', err);
+        }
+      }
     }
     setCategories(updated);
     localStorage.setItem('storebass_categories', JSON.stringify(updated));
+    window.dispatchEvent(new Event('storebass_categories_updated'));
     setCatModalOpen(false);
     setEditingCatId(null);
+  };
+
+  // Guardar Ajustes de Viaje sincronizados con Supabase
+  const handleSaveTripSettings = async () => {
+    localStorage.setItem('storebass_trip_settings', JSON.stringify(tripSettings));
+    window.dispatchEvent(new Event('storebass_trip_settings_updated'));
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      try {
+        await supabase.from('trip_config').upsert({
+          id: 1,
+          date_ida: tripSettings.startDate,
+          date_regreso: tripSettings.returnDate,
+          phone: tripSettings.phone,
+          exchange_rate: tripSettings.exchangeRate,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn('Error saving trip settings to Supabase:', err);
+      }
+    }
+    showToast('Ajustes guardados con éxito', 'Configuración del viaje actualizada en nube');
   };
 
   // Ticket Status update
@@ -460,24 +620,24 @@ export default function AdminPage() {
 
             <div>
               <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Usuario
+                Correo Electrónico Administrador
               </label>
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-lg">
-                  person
+                  mail
                 </span>
                 <input
-                  type="text"
-                  value={loginUser}
+                  type="email"
+                  value={loginEmail}
                   onChange={(e) => {
-                    setLoginUser(e.target.value);
+                    setLoginEmail(e.target.value);
                     if (loginError) setLoginError('');
                   }}
                   required
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
-                  placeholder="Usuario"
+                  placeholder="admin@storebass.pe"
                   className="w-full bg-slate-800/80 border border-slate-700 text-white rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-amber-500 transition-colors"
                 />
               </div>
@@ -501,7 +661,7 @@ export default function AdminPage() {
                   required
                   autoCapitalize="none"
                   autoCorrect="off"
-                  placeholder="Contraseña"
+                  placeholder="••••••••••••"
                   className="w-full bg-slate-800/80 border border-slate-700 text-white rounded-xl pl-10 pr-10 py-3 text-sm focus:outline-none focus:border-amber-500 transition-colors"
                 />
                 <button
@@ -518,12 +678,20 @@ export default function AdminPage() {
 
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-3.5 px-4 rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+              disabled={loggingIn}
+              className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-60 text-slate-950 font-black py-3.5 px-4 rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
             >
-              <span className="material-symbols-outlined text-xl">login</span>
-              <span>Iniciar Sesión</span>
+              <span className="material-symbols-outlined text-xl">
+                {loggingIn ? 'sync' : 'login'}
+              </span>
+              <span>{loggingIn ? 'Verificando con Supabase...' : 'Ingresar al Panel'}</span>
             </button>
           </form>
+
+          <div className="mt-4 p-3 rounded-xl bg-slate-800/50 border border-slate-700/50 text-[11px] text-slate-400 flex items-start gap-2">
+            <span className="material-symbols-outlined text-sm text-emerald-400 shrink-0 mt-0.5">verified_user</span>
+            <span>Acceso seguro administrado por Supabase Auth (JWT). Solo usuarios con credenciales oficiales.</span>
+          </div>
 
           <div className="mt-6 pt-5 border-t border-slate-800/80 text-center">
             <Link
@@ -562,7 +730,7 @@ export default function AdminPage() {
               JT
             </div>
             <div className="overflow-hidden">
-              <p className="text-xs font-bold text-white truncate">Johan Tovar</p>
+              <p className="text-xs font-bold text-white truncate">{adminEmail || 'Johan Tovar'}</p>
               <p className="text-[10px] text-emerald-400 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                 Administrador
@@ -1468,12 +1636,10 @@ export default function AdminPage() {
                   </div>
 
                   <button
-                    onClick={() =>
-                      showToast('Ajustes guardados con éxito', 'Configuración del viaje actualizada')
-                    }
-                    className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-xl text-xs transition-colors shadow-md mt-4"
+                    onClick={handleSaveTripSettings}
+                    className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-xl text-xs transition-colors shadow-md mt-4 cursor-pointer"
                   >
-                    Guardar Configuración
+                    Guardar Configuración en Nube
                   </button>
                 </div>
               </div>

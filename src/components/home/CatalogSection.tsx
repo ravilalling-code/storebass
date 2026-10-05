@@ -5,6 +5,7 @@ import { ProductCard } from './ProductCard';
 import { ProductDetailModal } from './ProductDetailModal';
 import { INITIAL_PRODUCTS } from '@/data/initialCatalog';
 import { Product } from '@/lib/types';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 interface CatalogSectionProps {
   products?: Product[];
@@ -33,10 +34,70 @@ export function CatalogSection({
   searchFilter = '',
   onSelectCategory,
 }: CatalogSectionProps) {
+  const [currentProducts, setCurrentProducts] = useState<Product[]>(products);
   const [selectedCat, setSelectedCat] = useState(activeCategoryFilter);
   const [selectedDisp, setSelectedDisp] = useState('todos');
   const [selectedSort, setSelectedSort] = useState<'default' | 'price-asc' | 'price-desc'>('default');
   const [selectedProductForModal, setSelectedProductForModal] = useState<Product | null>(null);
+
+  // Carga reactiva de productos desde Supabase Cloud con respaldo local
+  useEffect(() => {
+    const loadProducts = async () => {
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        try {
+          const { data, error } = await supabase
+            .from('products')
+            .select('*')
+            .eq('active', true)
+            .order('display_order', { ascending: true });
+
+          if (!error && data && data.length > 0) {
+            const mapped: Product[] = data.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              category: p.category,
+              regularPrice: Number(p.regular_price || p.regularPrice || p.price * 1.15),
+              price: Number(p.price),
+              delivery: p.delivery,
+              img: p.img,
+              active: p.active ?? true,
+            }));
+            setCurrentProducts(mapped);
+            return;
+          }
+        } catch (e) {
+          console.warn('Error fetching products from Supabase:', e);
+        }
+      }
+
+      // Respaldo en localStorage si no hay conexión o aún no se han subido
+      if (typeof window !== 'undefined') {
+        const local = localStorage.getItem('storebass_products');
+        if (local) {
+          try {
+            const parsed = JSON.parse(local);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setCurrentProducts(parsed);
+              return;
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+      setCurrentProducts(products);
+    };
+
+    loadProducts();
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storebass_products_updated', loadProducts);
+      return () => {
+        window.removeEventListener('storebass_products_updated', loadProducts);
+      };
+    }
+  }, [products]);
 
   // Sincronizar si cambia desde la barra superior de categoría o buscador
   useEffect(() => {
@@ -53,7 +114,7 @@ export function CatalogSection({
   };
 
   // Filtrado reactivo de productos
-  let filteredProducts = products.filter((p) => {
+  let filteredProducts = currentProducts.filter((p) => {
     // 1. Filtro de Categoría
     if (selectedCat !== 'todos') {
       if (selectedCat === 'stock') {
