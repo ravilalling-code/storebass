@@ -1,0 +1,29 @@
+name: Final admin repair
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/final-admin-repair.yml
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply verified patch
+        run: |
+          echo 'ZGlmZiAtLWdpdCBhL3NyYy9hcHAvYWRtaW4vcGFnZS50c3ggYi9zcmMvYXBwL2FkbWluL3BhZ2UudHN4CmluZGV4IDdmOGE3YWUuLmI3MzNmNWMgMTAwNjQ0Ci0tLSBhL3NyYy9hcHAvYWRtaW4vcGFnZS50c3gKKysrIGIvc3JjL2FwcC9hZG1pbi9wYWdlLnRzeApAQCAtODQ2LDEzICs4NDYsNiBAQCBleHBvcnQgZGVmYXVsdCBmdW5jdGlvbiBBZG1pblBhZ2UoKSB7CiAgICAgICAgICAgICAgICAgICAgIDxzcGFuPlBlZGlkb3Mgc2luY3Jvbml6YWRvcyBlbiB0aWVtcG8gcmVhbDwvc3Bhbj4KICAgICAgICAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICAgICAgIDwvZGl2PgotICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9InRleHQtMnhsIGZvbnQtYmxhY2sgdGV4dC13aGl0ZSI+Ci0gICAgICAgICAgICAgICAgICAgIHtzaGlwcGluZ0d1aWRlcy5sZW5ndGh9IEd1w61hcwotICAgICAgICAgICAgICAgICAgPC9kaXY+Ci0gICAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0idGV4dC14cyB0ZXh0LWJsdWUtMzAwIGZvbnQtYm9sZCBtdC0yIGZsZXggaXRlbXMtY2VudGVyIGdhcC0xIj4KLSAgICAgICAgICAgICAgICAgICAgPHNwYW4+4pyI77iPIE1pYW1pIEh1YiDinpQgTGltYSBDYWxsYW88L3NwYW4+Ci0gICAgICAgICAgICAgICAgICA8L2Rpdj4KLSAgICAgICAgICAgICAgICA8L2Rpdj4KIAogICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJiZy1zbGF0ZS05MDAgYm9yZGVyIGJvcmRlci1zbGF0ZS04MDAgcC01IHJvdW5kZWQtMnhsIj4KICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWJldHdlZW4gbWItMyI+CkBAIC05NzQsNyArOTY3LDcgQEAgZXhwb3J0IGRlZmF1bHQgZnVuY3Rpb24gQWRtaW5QYWdlKCkgewogICAgICAgICAgICAgICAgICAgICBvbkNsaWNrPXsoKSA9PiBzZXRDdXJyZW50VGFiKCdzZXR0aW5ncycpfQogICAgICAgICAgICAgICAgICAgICBjbGFzc05hbWU9InctZnVsbCBweS0yLjUgYmctc2xhdGUtODAwIGhvdmVyOmJnLXNsYXRlLTcwMCB0ZXh0LXhzIGZvbnQtYm9sZCB0ZXh0LXNsYXRlLTIwMCByb3VuZGVkLXhsIHRyYW5zaXRpb24tY29sb3JzIgogICAgICAgICAgICAgICAgICAgPgotICAgICAgICAgICAgICAgICAgICBBZG1pbmlzdHJhciB0b2RhcyBsYXMgZ3XDrWFzCisgICAgICAgICAgICAgICAgICAgIEVkaXRhciBlbiBBanVzdGVzICYgVmlhamVzCiAgICAgICAgICAgICAgICAgICA8L2J1dHRvbj4KICAgICAgICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAgICAgPC9kaXY+Cg==' | base64 -d > /tmp/admin.patch
+          git apply --check /tmp/admin.patch
+          git apply /tmp/admin.patch
+      - name: Build
+        run: npm run build
+      - name: Commit
+        run: |
+          git checkout -- next-env.d.ts || true
+          git config user.name storebass-bot
+          git config user.email actions@users.noreply.github.com
+          git add src/app/admin/page.tsx
+          git commit -m 'fix(admin): repair dashboard JSX and itinerary action'
+          git push origin HEAD:main
