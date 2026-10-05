@@ -105,3 +105,77 @@ button, a, [role="button"], input[type="submit"] {
 .animate-drawer {
   animation: slideDrawerIn 260ms var(--ease-drawer) forwards;
 }
+
+/* ─── Emil Kowalski: Stagger fade-in-up ─────────────────────────── */
+@keyframes fadeUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.animate-fade-up {
+  animation: fadeUp 400ms var(--ease-out) both;
+}
+.stagger-1 { animation-delay: 0ms; }
+.stagger-2 { animation-delay: 60ms; }
+.stagger-3 { animation-delay: 120ms; }
+.stagger-4 { animation-delay: 180ms; }
+.stagger-5 { animation-delay: 240ms; }
+
+/* ─── Clip-path reveal (left → right) ──────────────────────────── */
+@keyframes revealLR {
+  from { clip-path: inset(0 100% 0 0 round 12px); }
+  to   { clip-path: inset(0 0%   0 0 round 12px); }
+}
+.animate-reveal {
+  animation: revealLR 600ms var(--ease-out) both;
+}
+
+/* ─── Subtle float for hero image ───────────────────────────────── */
+@keyframes floatY {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+.animate-float {
+  animation: floatY 4s ease-in-out infinite;
+}
+
+/* ─── Shimmer skeleton ──────────────────────────────────────────── */
+@keyframes shimmer {
+  from { background-position: -200% center; }
+  to   { background-position:  200% center; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+  background-size: 200% auto;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* ─── 3D card tilt on hover (CSS-only, no JS) ───────────────────── */
+.card-3d {
+  transform-style: preserve-3d;
+  transition: transform 400ms var(--ease-out);
+  perspective: 800px;
+}
+.card-3d:hover {
+  transform: rotateX(3deg) rotateY(-3deg) scale(1.02);
+}
+
+/* ─── Emil: scale-down on press for any button/link ─────────────── */
+.press-scale {
+  transition: transform 160ms var(--ease-out);
+}
+.press-scale:active {
+  transform: scale(0.97);
+}
+
+/* ─── Reduced motion: keep opacity fades, remove movement ─────── */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-reveal,
+  .animate-float,
+  .card-3d,
+  .card-3d:hover {
+    animation: none;
+    transform: none;
+    transition: opacity 200ms ease;
+  }
+}
