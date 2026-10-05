@@ -26,7 +26,7 @@ export default function AdminPage() {
 
   // Tab Navigation State
   const [currentTab, setCurrentTab] = useState<
-    'dashboard' | 'catalog' | 'categories' | 'shipping' | 'crm' | 'marketing' | 'settings'
+    'dashboard' | 'catalog' | 'categories' | 'crm' | 'marketing' | 'settings'
   >('dashboard');
 
   // Catalog Products State
@@ -73,8 +73,6 @@ export default function AdminPage() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [ticketFilter, setTicketFilter] = useState<'todos' | 'Web' | 'WhatsApp'>('todos');
 
-  // Shipping Guides State (Limpias para producción)
-  const [shippingGuides, setShippingGuides] = useState<any[]>([]);
 
   // Trip Settings State
   const [tripSettings, setTripSettings] = useState({
@@ -466,7 +464,7 @@ export default function AdminPage() {
       tag: 'Tendencia USA',
       btn_text: 'Pedir por link',
       link: '#pedir-link',
-      img: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=1000&q=80',
+      img: '',
       active: true,
       display_order: ads.length + 1,
     });
@@ -491,7 +489,7 @@ export default function AdminPage() {
   const handleSaveBanner = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!bannerForm.img || !bannerForm.title) {
-      alert('Por favor ingresa la URL de la imagen y el título del banner');
+      alert('Por favor selecciona una imagen y escribe el título del banner');
       return;
     }
 
@@ -714,12 +712,6 @@ export default function AdminPage() {
                 badge: categories.filter((c) => c.active).length,
               },
               {
-                id: 'shipping',
-                label: 'Monitoreo de Envíos',
-                icon: 'flight_takeoff',
-                badge: shippingGuides.length,
-              },
-              {
                 id: 'crm',
                 label: 'Tickets & Pedidos',
                 icon: 'confirmation_number',
@@ -794,8 +786,6 @@ export default function AdminPage() {
                   ? 'Gestión de Catálogo & Precios'
                   : currentTab === 'categories'
                   ? 'Gestión de Categorías'
-                  : currentTab === 'shipping'
-                  ? 'Monitoreo de Envíos Courier'
                   : currentTab === 'crm'
                   ? 'Control de Tickets & Pedidos Correlativos'
                   : currentTab === 'marketing'
@@ -856,16 +846,6 @@ export default function AdminPage() {
                     <span>Pedidos sincronizados en tiempo real</span>
                   </div>
                 </div>
-
-                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                      Paquetes en Tránsito
-                    </span>
-                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
-                      <span className="material-symbols-outlined">flight_takeoff</span>
-                    </div>
-                  </div>
                   <div className="text-2xl font-black text-white">
                     {shippingGuides.length} Guías
                   </div>
@@ -979,23 +959,19 @@ export default function AdminPage() {
                     <span>Itinerario Hub Miami (MIA)</span>
                   </h3>
 
-                  <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-white">Vuelo Latam Cargo MIA-LIM</span>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold text-[10px] border border-emerald-500/20">
-                        En Vuelo
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-400">
-                      Guía Máster: 045-8921820 · 142 kg consolidados
-                    </div>
-                    <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-emerald-400 h-full w-3/4"></div>
-                    </div>
-                  </div>
-
+                  <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-3">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-bold text-white">Próximo viaje configurado</span>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold text-[10px] border border-emerald-500/20">Activo</span>
+          </div>
+          <div className="text-xs text-slate-400">{tripSettings.departurePlace} → {tripSettings.arrivalPlace}</div>
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div className="rounded-xl bg-slate-900/70 p-2 border border-slate-700"><span className="block text-slate-500">Salida</span><span className="font-bold text-white">{tripSettings.startDate || 'Sin fecha'}</span></div>
+            <div className="rounded-xl bg-slate-900/70 p-2 border border-slate-700"><span className="block text-slate-500">Regreso</span><span className="font-bold text-white">{tripSettings.returnDate || 'Sin fecha'}</span></div>
+          </div>
+        </div>
                   <button
-                    onClick={() => setCurrentTab('shipping')}
+                    onClick={() => setCurrentTab('settings')}
                     className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 rounded-xl transition-colors"
                   >
                     Administrar todas las guías
@@ -1222,69 +1198,6 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* TAB 4: SHIPPING */}
-          {currentTab === 'shipping' && (
-            <div className="space-y-6">
-              <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-bold text-white">
-                    Monitoreo de Envíos Internacionales & Locales
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    Actualiza el estado de las guías en tiempo real
-                  </p>
-                </div>
-                <span className="px-3 py-1 rounded-xl bg-blue-500/15 text-blue-400 text-xs font-bold border border-blue-500/30">
-                  {shippingGuides.length} Guías Activas
-                </span>
-              </div>
-
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[640px] text-left text-xs text-slate-300">
-                    <thead className="bg-slate-850 border-b border-slate-800 text-[11px] uppercase font-bold text-slate-400 tracking-wider">
-                      <tr>
-                        <th className="p-4">Guía / Código</th>
-                        <th className="p-4">Cliente</th>
-                        <th className="p-4">Artículo</th>
-                        <th className="p-4">Estado Logístico</th>
-                        <th className="p-4">Itinerario</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/80">
-                      {shippingGuides.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="p-8 text-center text-slate-400">
-                            <span className="material-symbols-outlined text-3xl mb-1 text-slate-600 block">local_shipping</span>
-                            No hay guías de despacho registradas aún. Las nuevas guías aparecerán aquí.
-                          </td>
-                        </tr>
-                      ) : (
-                        shippingGuides.map((g) => (
-                          <tr key={g.id} className="hover:bg-slate-800/40 transition-colors">
-                            <td className="p-4">
-                              <span className="font-mono font-bold text-amber-400 bg-slate-800 px-2 py-1 rounded-lg">
-                                #{g.id}
-                              </span>
-                              <div className="text-[10px] text-slate-500 mt-1">{g.awb}</div>
-                            </td>
-                            <td className="p-4 font-bold text-white">{g.client}</td>
-                            <td className="p-4 text-slate-300">{g.item}</td>
-                            <td className="p-4">
-                              <span className="px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-400 font-bold text-[11px] border border-blue-500/30">
-                                {g.status}
-                              </span>
-                            </td>
-                            <td className="p-4 text-slate-400">{g.date}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* TAB 5: CRM / TICKETS */}
           {currentTab === 'crm' && (
@@ -1844,7 +1757,7 @@ export default function AdminPage() {
                   ) : (
                     <div className="text-slate-600 flex flex-col items-center gap-1">
                       <span className="material-symbols-outlined text-3xl">image</span>
-                      <span className="text-[11px]">Ingresa una URL válida para ver la imagen</span>
+                      <span className="text-[11px]">Selecciona una imagen para ver la previsualización</span>
                     </div>
                   )}
                   {bannerForm.tag && (
@@ -1856,23 +1769,6 @@ export default function AdminPage() {
               </div>
 
               <ImageUpload onUpload={url => setBannerForm(previous => ({ ...previous, img: url }))} onBusy={setUploading} />
-              {/* URL de la Imagen */}
-              <div>
-                <label className="block text-slate-400 font-bold mb-1">
-                  URL de la Imagen <span className="text-amber-500">*</span>
-                </label>
-                <input
-                  type="url"
-                  required
-                  value={bannerForm.img}
-                  onChange={(e) => setBannerForm({ ...bannerForm, img: e.target.value })}
-                  placeholder="https://images.unsplash.com/... o enlace directo a imagen"
-                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500"
-                />
-                <p className="text-[10px] text-slate-500 mt-1">
-                  Puedes usar imágenes directas de Unsplash, Google Drive público, Imgur o tu CDN.
-                </p>
-              </div>
 
               {/* Título Principal */}
               <div>
