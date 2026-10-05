@@ -1,0 +1,100 @@
+name: Cleanup StoreBass admin UI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cleanup-admin-ui.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Apply cleanup
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('src/app/admin/page.tsx')
+          s = path.read_text()
+
+          # Remove shipping from tab type and its obsolete local state.
+          s = s.replace("'dashboard' | 'catalog' | 'categories' | 'shipping' | 'crm' | 'marketing' | 'settings'", "'dashboard' | 'catalog' | 'categories' | 'crm' | 'marketing' | 'settings'")
+          s = s.replace("\n  // Shipping Guides State (Limpias para producción)\n  const [shippingGuides, setShippingGuides] = useState<any[]>([]);\n", "\n")
+
+          # Remove shipping navigation entry.
+          s = re.sub(r"\n\s*\{\n\s*id: 'shipping',\n\s*label: 'Monitoreo de Envíos',\n\s*icon: 'flight_takeoff',\n\s*badge: shippingGuides\.length,\n\s*\},", "", s)
+
+          # Remove shipping topbar title branch.
+          s = s.replace("\n                  : currentTab === 'shipping'\n                  ? 'Monitoreo de Envíos Courier'", "")
+
+          # Remove dashboard shipping KPI card.
+          s = re.sub(r"\n\s*<div className=\"bg-slate-900 border border-slate-800 p-5 rounded-2xl\">\n\s*<div className=\"flex items-center justify-between mb-3\">\n\s*<span className=\"text-xs font-bold uppercase tracking-wider text-slate-400\">\n\s*Paquetes en Tránsito.*?</div>\n\s*</div>", "", s, count=1, flags=re.S)
+
+          # Replace hardcoded Hub logistics card with trip-config summary.
+          old_start = '<div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-2">\n                    <div className="flex items-center justify-between text-xs">\n                      <span className="font-bold text-white">Vuelo Latam Cargo MIA-LIM</span>'
+          if old_start in s:
+              start = s.index(old_start)
+              end_marker = "\n                  <button\n                    onClick={() => setCurrentTab('shipping')}"
+              end = s.index(end_marker, start)
+              replacement = '''<div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-white">Próximo viaje configurado</span>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold text-[10px] border border-emerald-500/20">
+                        Activo
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      {tripSettings.departurePlace} → {tripSettings.arrivalPlace}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="rounded-xl bg-slate-900/70 p-2 border border-slate-700">
+                        <span className="block text-slate-500">Salida</span>
+                        <span className="font-bold text-white">{tripSettings.startDate || 'Sin fecha'}</span>
+                      </div>
+                      <div className="rounded-xl bg-slate-900/70 p-2 border border-slate-700">
+                        <span className="block text-slate-500">Regreso</span>
+                        <span className="font-bold text-white">{tripSettings.returnDate || 'Sin fecha'}</span>
+                      </div>
+                    </div>
+                  </div>'''
+              s = s[:start] + replacement + s[end:]
+              s = s.replace("onClick={() => setCurrentTab('shipping')}", "onClick={() => setCurrentTab('settings')}", 1)
+              s = s.replace('>\n                    Ver monitoreo de envíos\n', '>\n                    Editar en Ajustes & Viajes\n', 1)
+
+          # Remove the entire shipping tab content.
+          s = re.sub(r"\n\s*\{\/\* TAB 4: SHIPPING \*\/\}.*?(?=\n\s*\{\/\* TAB 5: CRM / TICKETS \*\/\})", "\n", s, flags=re.S)
+
+          # New banners must start without a fake handbag image.
+          s = s.replace("img: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=1000&q=80',", "img: '',")
+          s = s.replace("alert('Por favor ingresa la URL de la imagen y el título del banner');", "alert('Por favor selecciona una imagen y escribe el título del banner');")
+          s = s.replace('Ingresa una URL válida para ver la imagen', 'Selecciona una imagen para ver la previsualización')
+
+          # Remove manual URL field: upload control is the single source of the image.
+          s = re.sub(r"\n\s*\{\/\* URL de la Imagen \*\/\}\n\s*<div>\n\s*<label className=\"block text-slate-400 font-bold mb-1\">\n\s*URL de la Imagen.*?</div>\n", "\n", s, count=1, flags=re.S)
+
+          path.write_text(s)
+
+      - name: Verify no obsolete UI remains
+        run: |
+          ! grep -q "photo-1544816155-12df9643f363" src/app/admin/page.tsx
+          ! grep -q "Monitoreo de Envíos" src/app/admin/page.tsx
+          ! grep -q "URL de la Imagen" src/app/admin/page.tsx
+          grep -q "img: ''" src/app/admin/page.tsx
+          grep -q "Editar en Ajustes & Viajes" src/app/admin/page.tsx
+
+      - name: Commit cleanup
+        run: |
+          git config user.name "storebass-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/app/admin/page.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "fix(admin): clean banners shipping and itinerary"
+          git push origin main
