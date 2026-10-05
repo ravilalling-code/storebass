@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Product } from '@/lib/types';
 import { useCart } from '@/context/CartContext';
 import { WhatsAppIcon } from '@/components/ui/WhatsAppIcon';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -16,243 +17,135 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
   const [quantity, setQuantity] = useState(1);
   const [addedAnimation, setAddedAnimation] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [gallery, setGallery] = useState<string[]>([]);
+  const [activeImage, setActiveImage] = useState(0);
 
-  // Reset quantity and handle mounting animation
   useEffect(() => {
-    if (isOpen) {
-      setQuantity(1);
-      setAddedAnimation(false);
-      // Small timeout to allow DOM to render before triggering CSS transition (Emil Kowalski pattern)
-      requestAnimationFrame(() => setMounted(true));
-      document.body.style.overflow = 'hidden';
-    } else {
+    if (!isOpen || !product) return;
+    setQuantity(1);
+    setAddedAnimation(false);
+    setActiveImage(0);
+    setGallery(product.img ? [product.img] : []);
+    requestAnimationFrame(() => setMounted(true));
+    document.body.style.overflow = 'hidden';
+
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      void supabase
+        .from('product_images')
+        .select('url,sort_order,is_primary')
+        .eq('product_id', product.id)
+        .order('is_primary', { ascending: false })
+        .order('sort_order', { ascending: true })
+        .then(({ data, error }) => {
+          if (!error && data?.length) {
+            const urls = data.map(row => row.url).filter(Boolean);
+            if (urls.length) setGallery(Array.from(new Set(urls)));
+          }
+        });
+    }
+
+    return () => {
       setMounted(false);
       document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
     };
-  }, [isOpen]);
+  }, [isOpen, product]);
 
-  // Close on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
+      if (!isOpen) return;
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft' && gallery.length > 1) setActiveImage(i => (i - 1 + gallery.length) % gallery.length);
+      if (e.key === 'ArrowRight' && gallery.length > 1) setActiveImage(i => (i + 1) % gallery.length);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, gallery.length]);
 
+  const image = gallery[activeImage] || product?.img || '';
+  const totalPrice = useMemo(() => product ? (product.price * quantity).toFixed(2) : '0.00', [product, quantity]);
   if (!isOpen || !product) return null;
 
   const isStock = product.delivery?.toLowerCase().includes('stock');
   const isSoldOut = product.delivery?.toLowerCase().includes('agotado');
-  const totalPrice = (product.price * quantity).toFixed(2);
-
-  const handleDecrease = () => {
-    if (quantity > 1) {
-      setQuantity(q => q - 1);
-    }
-  };
-
-  const handleIncrease = () => {
-    setQuantity(q => q + 1);
-  };
+  const regularPrice = product.regular_price ?? product.regularPrice;
 
   const handleAddToCart = () => {
     addToCart(product.name, product.price, quantity);
     setAddedAnimation(true);
-    setTimeout(() => {
-      setAddedAnimation(false);
-    }, 1200);
+    setTimeout(() => setAddedAnimation(false), 1200);
   };
 
-  const whatsappMessage = encodeURIComponent(
-`🛍️ *STORE BASS — COMPRA DIRECTA* 🇺🇸✈️🇵🇪
-─────────────────────────
-👋 ¡Hola Johan Tovar! Vi este producto en el catálogo y deseo asegurar mi pedido:
-
-📦 *PRODUCTO:* ${product.name}
-🏷️ *CATEGORÍA:* ${product.category}
-🔢 *CANTIDAD:* ${quantity} unidad(es)
-💰 *PRECIO UNITARIO:* S/ ${product.price.toFixed(2)}
-💵 *TOTAL A PAGAR:* S/ ${totalPrice}
-🚚 *ENTREGA:* ${product.delivery}
-
-✈️ *PRÓXIMO VIAJE:* Vuelo 20 Oct ➔ Entrega en Lima 29 Oct
-🛡️ *GARANTÍA:* Compra física en tienda oficial de USA con recibo
-
-─────────────────────────
-¿Me confirmas disponibilidad y los datos para reservar mi entrega? ¡Muchas gracias! 🙌`
-  );
+  const whatsappMessage = encodeURIComponent(`🛍️ STORE BASS — COMPRA DIRECTA\n\nProducto: ${product.name}\nCategoría: ${product.category}\nCantidad: ${quantity}\nPrecio unitario: S/ ${product.price.toFixed(2)}\nTotal: S/ ${totalPrice}\nEntrega: ${product.delivery}\n\n¿Me confirmas disponibilidad y los datos para reservar mi entrega?`);
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="product-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6"
-    >
-      {/* 1. Backdrop con fade y blur sutil */}
-      <div
-        onClick={onClose}
-        className={`fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity duration-200 ease-out ${
-          mounted ? 'opacity-100' : 'opacity-0'
-        }`}
-      />
-
-      {/* 2. Dialog Modal - Emil Kowalski Motion: scale(0.95) a scale(1.0) con curva cubic-bezier(0.23, 1, 0.32, 1) */}
-      <div
-        className={`relative w-full max-w-2xl bg-white dark:bg-darkCard border border-slate-200 dark:border-darkBorder rounded-3xl shadow-2xl overflow-hidden z-10 transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] origin-center max-h-[90vh] flex flex-col ${
-          mounted ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
-        }`}
-      >
-        {/* Botón Cerrar */}
-        <button
-          onClick={onClose}
-          aria-label="Cerrar ventana"
-          className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-slate-100/90 dark:bg-slate-800/90 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-transform active:scale-90"
-        >
-          <span className="material-symbols-outlined text-lg">close</span>
+    <div role="dialog" aria-modal="true" aria-labelledby="product-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
+      <div onClick={onClose} className={`fixed inset-0 bg-slate-950/75 backdrop-blur-sm transition-opacity ${mounted ? 'opacity-100' : 'opacity-0'}`} />
+      <div className={`relative z-10 w-full max-w-5xl max-h-[94vh] overflow-y-auto rounded-2xl bg-white dark:bg-darkCard border border-slate-200 dark:border-darkBorder shadow-2xl transition-all ${mounted ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
+        <button onClick={onClose} aria-label="Cerrar" className="absolute right-4 top-4 z-30 w-10 h-10 rounded-full bg-white/95 dark:bg-slate-800 shadow border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+          <span className="material-symbols-outlined">close</span>
         </button>
 
-        <div className="overflow-y-auto p-5 sm:p-7 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-            {/* Imagen Principal con zoom sutil */}
-            <div className="relative rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 aspect-square border border-slate-200/60 dark:border-darkBorder/60 group">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={product.img}
-                alt={product.name}
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-              />
-              <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-900/90 text-white backdrop-blur-sm">
-                  {product.category}
-                </span>
-                {isStock ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-500 text-white shadow-sm">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
-                    Stock Lima
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-blue-600 text-white shadow-sm">
-                    <span className="material-symbols-outlined text-xs">flight_land</span>
-                    {product.delivery || 'Entrega por coordinar'}
-                  </span>
-                )}
+        <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_.85fr] gap-0">
+          <section className="p-4 sm:p-6 bg-slate-50 dark:bg-slate-950/30">
+            <div className="flex gap-3">
+              {gallery.length > 1 && (
+                <div className="hidden sm:flex w-20 shrink-0 flex-col gap-2 max-h-[520px] overflow-y-auto">
+                  {gallery.map((url, index) => (
+                    <button key={`${url}-${index}`} onClick={() => setActiveImage(index)} className={`relative aspect-square overflow-hidden rounded-xl border-2 bg-white ${activeImage === index ? 'border-amber-500' : 'border-slate-200 dark:border-slate-700'}`}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt={`${product.name} ${index + 1}`} className="w-full h-full object-contain" />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="relative flex-1 aspect-square max-h-[560px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-center group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={image} alt={product.name} className="w-full h-full object-contain p-3 sm:p-6 transition-transform duration-300 group-hover:scale-[1.03]" />
+                {gallery.length > 1 && <>
+                  <button aria-label="Imagen anterior" onClick={() => setActiveImage(i => (i - 1 + gallery.length) % gallery.length)} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/70 text-white flex items-center justify-center"><span className="material-symbols-outlined">chevron_left</span></button>
+                  <button aria-label="Imagen siguiente" onClick={() => setActiveImage(i => (i + 1) % gallery.length)} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/70 text-white flex items-center justify-center"><span className="material-symbols-outlined">chevron_right</span></button>
+                </>}
+                <div className="absolute left-3 top-3 flex flex-col gap-2">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-slate-900/90 text-white">{product.category}</span>
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase text-white ${isStock ? 'bg-emerald-500' : 'bg-blue-600'}`}>{product.delivery || 'Entrega por coordinar'}</span>
+                </div>
               </div>
             </div>
-
-            {/* Detalles del Producto */}
-            <div className="flex flex-col justify-between space-y-4">
-              <div>
-                <span className="text-xs font-bold text-amber-500 uppercase tracking-wider">
-                  Detalles del Producto
-                </span>
-                <h2
-                  id="product-modal-title"
-                  className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-display mt-1 leading-snug"
-                >
-                  {product.name}
-                </h2>
-
-                {product.description && <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{product.description}</p>}
-                {/* Precios */}
-                <div className="mt-3 flex items-baseline gap-2.5">
-                  <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-                    S/ {product.price.toFixed(2)}
-                  </span>
-                  {product.regularPrice && product.regularPrice > product.price && (
-                    <span className="text-sm font-semibold text-slate-400 line-through">
-                      S/ {product.regularPrice.toFixed(2)}
-                    </span>
-                  )}
-                </div>
-
-                {/* Disponibilidad y Logística */}
-                <div className="mt-3 p-3 rounded-2xl bg-slate-50 dark:bg-darkElevated/60 border border-slate-200/60 dark:border-darkBorder/60 space-y-1.5 text-xs">
-                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-semibold">
-                    <span className="material-symbols-outlined text-emerald-500 text-sm">schedule</span>
-                    <span>{product.delivery}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-[11px]">
-                    <span className="material-symbols-outlined text-amber-500 text-sm">verified</span>
-                    <span>100% Original con comprobante de compra en USA</span>
-                  </div>
-                </div>
+            {gallery.length > 1 && (
+              <div className="sm:hidden mt-3 flex gap-2 overflow-x-auto pb-1">
+                {gallery.map((url, index) => <button key={`${url}-${index}`} onClick={() => setActiveImage(index)} className={`w-16 h-16 shrink-0 rounded-lg overflow-hidden border-2 bg-white ${activeImage === index ? 'border-amber-500' : 'border-slate-200'}`}><img src={url} alt="" className="w-full h-full object-contain" /></button>)}
               </div>
+            )}
+          </section>
 
-              {/* Selector de Cantidades - Emil Kowalski Tactile Buttons */}
-              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
-                  <span>Cantidad:</span>
-                  <span className="text-slate-400 font-normal">
-                    Subtotal: <strong className="text-slate-900 dark:text-white font-bold">S/ {totalPrice}</strong>
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-2xl p-1 bg-slate-50 dark:bg-darkElevated">
-                    <button
-                      type="button"
-                      onClick={handleDecrease}
-                      disabled={quantity <= 1}
-                      aria-label="Disminuir cantidad"
-                      className="w-8 h-8 rounded-xl bg-white dark:bg-darkCard text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-amber-500 hover:text-slate-950 flex items-center justify-center font-bold text-base transition-transform active:scale-90 shadow-sm"
-                    >
-                      <span className="material-symbols-outlined text-sm">remove</span>
-                    </button>
-                    <span className="w-12 text-center font-black text-sm text-slate-900 dark:text-white">
-                      {quantity}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleIncrease}
-                      aria-label="Aumentar cantidad"
-                      className="w-8 h-8 rounded-xl bg-white dark:bg-darkCard text-slate-700 dark:text-slate-200 hover:bg-amber-500 hover:text-slate-950 flex items-center justify-center font-bold text-base transition-transform active:scale-90 shadow-sm"
-                    >
-                      <span className="material-symbols-outlined text-sm">add</span>
-                    </button>
-                  </div>
-
-                  {/* Botón Agregar al Carrito */}
-                  <button
-                    type="button"
-                    onClick={handleAddToCart}
-                    disabled={isSoldOut}
-                    className={`flex-1 py-3 px-4 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all duration-150 active:scale-[0.97] shadow-md ${
-                      addedAnimation
-                        ? 'bg-emerald-500 text-white'
-                        : isSoldOut
-                        ? 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed'
-                        : 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-base">
-                      {addedAnimation ? 'check_circle' : 'add_shopping_cart'}
-                    </span>
-                    <span>
-                      {addedAnimation ? '¡Agregado al carrito!' : `Agregar (${quantity}) al carrito`}
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Botón Directo WhatsApp */}
-              <a
-                href={`https://wa.me/51960759244?text=${whatsappMessage}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full py-2.5 px-4 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-bold text-xs flex items-center justify-center gap-2 transition-transform active:scale-[0.98]"
-              >
-                <WhatsAppIcon className="w-4 h-4 text-emerald-500 shrink-0" />
-                <span>Pedir directo por WhatsApp (S/ {totalPrice})</span>
-              </a>
+          <section className="p-5 sm:p-7 lg:p-8 flex flex-col">
+            <p className="text-xs font-bold text-amber-500 uppercase tracking-wider">Detalles del producto</p>
+            <h2 id="product-modal-title" className="mt-2 pr-10 text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">{product.name}</h2>
+            <div className="mt-4 flex items-baseline gap-3">
+              <span className="text-3xl font-black text-slate-900 dark:text-white">S/ {product.price.toFixed(2)}</span>
+              {regularPrice && regularPrice > product.price && <span className="text-sm text-slate-400 line-through">S/ {regularPrice.toFixed(2)}</span>}
             </div>
-          </div>
+            <div className="mt-5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4 space-y-2 text-sm">
+              <div className="flex gap-2"><span className="material-symbols-outlined text-emerald-500 text-lg">local_shipping</span><span>{product.delivery}</span></div>
+              <div className="flex gap-2"><span className="material-symbols-outlined text-amber-500 text-lg">verified</span><span>Producto original con comprobante de compra.</span></div>
+              {gallery.length > 1 && <div className="flex gap-2"><span className="material-symbols-outlined text-blue-500 text-lg">photo_library</span><span>{gallery.length} fotos disponibles</span></div>}
+            </div>
+            {product.description && <div className="mt-5"><h3 className="font-black text-sm text-slate-900 dark:text-white">Información adicional</h3><p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{product.description}</p></div>}
+
+            <div className="mt-auto pt-6 space-y-3">
+              <div className="flex items-center justify-between text-xs font-bold"><span>Cantidad</span><span>Subtotal: S/ {totalPrice}</span></div>
+              <div className="flex gap-3">
+                <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                  <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="w-10 h-11 flex items-center justify-center"><span className="material-symbols-outlined">remove</span></button>
+                  <span className="w-10 text-center font-black">{quantity}</span>
+                  <button onClick={() => setQuantity(q => q + 1)} className="w-10 h-11 flex items-center justify-center"><span className="material-symbols-outlined">add</span></button>
+                </div>
+                <button onClick={handleAddToCart} disabled={isSoldOut} className={`flex-1 rounded-xl font-black text-sm ${addedAnimation ? 'bg-emerald-500 text-white' : isSoldOut ? 'bg-slate-300 text-slate-500' : 'bg-amber-500 hover:bg-amber-400 text-slate-950'}`}>{addedAnimation ? '¡Agregado!' : 'Agregar al carrito'}</button>
+              </div>
+              <a href={`https://wa.me/51960759244?text=${whatsappMessage}`} target="_blank" rel="noopener noreferrer" className="w-full py-3 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-bold text-xs flex items-center justify-center gap-2"><WhatsAppIcon className="w-4 h-4" />Pedir por WhatsApp</a>
+            </div>
+          </section>
         </div>
       </div>
     </div>
