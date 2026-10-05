@@ -92,7 +92,9 @@ export function FlightScheduleBanner() {
             </a>
 
             <a
-              href="https://wa.me/51960759244?text=Hola%20Johan,%20quiero%20reservar%20mi%20cupo%20para%20el%20viaje%20del%2020%20al%2029%20de%20Octubre"
+              href={`https://wa.me/51960759244?text=${encodeURIComponent(
+                `✈️ *STORE BASS — RESERVA DE CUPO PARA VIAJE A USA* 🇺🇸🇵🇪\n─────────────────────────\n👋 ¡Hola Johan Tovar! Quiero consultar y reservar mi cupo para el viaje confirmado:\n\n🛫 *SALIDA:* 20 de Octubre (Lima ➔ Miami Hub)\n🛬 *ENTREGA:* 29 de Octubre (En mis manos en Lima)\n\n¿Aún tienes espacio en tu equipaje para mis compras? ¡Muchas gracias! 🙌`
+              )}`}
               target="_blank"
               rel="noopener noreferrer"
               className="py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-700/80 font-bold rounded-2xl text-xs flex items-center justify-center gap-1.5 transition-transform active:scale-[0.97] text-center"

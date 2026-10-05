@@ -64,41 +64,8 @@ export default function AdminPage() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [ticketFilter, setTicketFilter] = useState<'todos' | 'Web' | 'WhatsApp'>('todos');
 
-  // Shipping Guides State
-  const [shippingGuides, setShippingGuides] = useState([
-    {
-      id: 'SB-84920',
-      awb: 'AWB 001-9283-4819',
-      client: 'Carlos Mendoza',
-      item: 'Apple MacBook Air M3 15"',
-      status: 'En tránsito aéreo a Lima',
-      date: '20 Oct - 29 Oct',
-    },
-    {
-      id: 'SB-74190',
-      awb: 'AWB 001-4432-1192',
-      client: 'Mariana Silva',
-      item: 'Sony WH-1000XM5 ANC Black',
-      status: 'En reparto · Lima Metropolitana',
-      date: 'Entrega hoy',
-    },
-    {
-      id: 'SB-63219',
-      awb: 'AWB 001-8891-2301',
-      client: 'Diego Ramos',
-      item: 'iPhone 16 Pro Max 256GB',
-      status: 'Comprado en Miami Hub',
-      date: '20 Oct',
-    },
-    {
-      id: 'SB-55102',
-      awb: 'AWB 001-7723-9081',
-      client: 'Lucía Fernández',
-      item: 'Dyson Supersonic Edición Especial',
-      status: 'Entregado en Surco',
-      date: 'Finalizado',
-    },
-  ]);
+  // Shipping Guides State (Limpias para producción)
+  const [shippingGuides, setShippingGuides] = useState<any[]>([]);
 
   // Trip Settings State
   const [tripSettings, setTripSettings] = useState({
@@ -149,52 +116,20 @@ export default function AdminPage() {
         }
       }
 
-      // Load tickets
+      // Load tickets (Limpieza de tickets de prueba para producción)
       const savedTickets = localStorage.getItem('storebass_tickets');
       if (savedTickets) {
         try {
-          setTickets(JSON.parse(savedTickets));
+          const parsed = JSON.parse(savedTickets);
+          // Filtrar cualquier ticket dummy previo de prueba
+          const realTickets = Array.isArray(parsed)
+            ? parsed.filter((t: any) => !['TK-1001', 'TK-1002', 'TK-1003'].includes(t?.ticketId))
+            : [];
+          setTickets(realTickets);
+          localStorage.setItem('storebass_tickets', JSON.stringify(realTickets));
         } catch (e) {
           console.error(e);
         }
-      } else {
-        const dummyTickets = [
-          {
-            ticketId: 'TK-1003',
-            correlativo: 1003,
-            origen: 'Web',
-            fecha: '04/10/2026, 19:40',
-            cliente: 'Carlos Mendoza',
-            telefono: '987654321',
-            detalle: 'iPhone 16 Pro Max 256GB Desert Titanium',
-            total: 5490,
-            estado: 'Cotizado',
-          },
-          {
-            ticketId: 'TK-1002',
-            correlativo: 1002,
-            origen: 'WhatsApp',
-            fecha: '04/10/2026, 18:15',
-            cliente: 'Mariana Silva',
-            telefono: '912345678',
-            detalle: 'Perfume Lattafa Khamrah 100ml',
-            total: 219,
-            estado: 'Confirmado y pagado',
-          },
-          {
-            ticketId: 'TK-1001',
-            correlativo: 1001,
-            origen: 'Web',
-            fecha: '04/10/2026, 17:05',
-            cliente: 'Diego Ramos',
-            telefono: '945678123',
-            detalle: 'Sony WH-1000XM5 Audífonos Bluetooth',
-            total: 1389,
-            estado: 'Comprado en USA',
-          },
-        ];
-        setTickets(dummyTickets);
-        localStorage.setItem('storebass_tickets', JSON.stringify(dummyTickets));
       }
 
       // Try reading tickets from Supabase Cloud if available
@@ -575,7 +510,6 @@ export default function AdminPage() {
             <div className="hidden lg:flex items-center gap-2 bg-slate-800/80 border border-slate-700 px-3 py-1.5 rounded-xl text-xs">
               <span className="text-slate-400">USD/PEN:</span>
               <span className="font-black text-emerald-400">S/ {tripSettings.exchangeRate}</span>
-              <span className="text-[10px] text-slate-500">SUNAT</span>
             </div>
 
             <Link
@@ -612,10 +546,12 @@ export default function AdminPage() {
                       <span className="material-symbols-outlined">payments</span>
                     </div>
                   </div>
-                  <div className="text-2xl font-black text-white">S/ 48,920.00</div>
+                  <div className="text-2xl font-black text-white">
+                    S/ {tickets.reduce((acc, t) => acc + (parseFloat(t.total) || 0), 0).toFixed(2)}
+                  </div>
                   <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold mt-2">
                     <span className="material-symbols-outlined text-sm">trending_up</span>
-                    <span>+18.4% vs mes anterior</span>
+                    <span>Pedidos sincronizados en tiempo real</span>
                   </div>
                 </div>
 
@@ -691,40 +627,47 @@ export default function AdminPage() {
                   </div>
 
                   <div className="space-y-3">
-                    {tickets.slice(0, 5).map((t, idx) => (
-                      <div
-                        key={idx}
-                        className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between gap-3"
-                      >
-                        <div className="flex items-center gap-3 overflow-hidden">
-                          <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-bold flex-shrink-0 font-mono">
-                            #{t.correlativo || t.ticketId?.replace('TK-', '') || idx + 1001}
-                          </div>
-                          <div className="overflow-hidden">
-                            <div className="text-xs font-bold text-white truncate">
-                              {t.cliente} · {t.telefono}
-                            </div>
-                            <div className="text-[10px] text-slate-400 truncate">
-                              {t.detalle}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              t.origen === 'Web'
-                                ? 'bg-blue-500/20 text-blue-400'
-                                : 'bg-emerald-500/20 text-emerald-400'
-                            }`}
-                          >
-                            #{t.ticketId}
-                          </span>
-                          <span className="text-xs font-bold text-white">
-                            S/ {parseFloat(t.total || 0).toFixed(2)}
-                          </span>
-                        </div>
+                    {tickets.length === 0 ? (
+                      <div className="p-8 text-center text-slate-400 text-xs bg-slate-800/30 rounded-2xl border border-slate-800">
+                        <span className="material-symbols-outlined text-3xl mb-1 text-slate-600 block">inbox</span>
+                        Aún no hay tickets ni pedidos registrados. Los nuevos pedidos aparecerán aquí automáticamente.
                       </div>
-                    ))}
+                    ) : (
+                      tickets.slice(0, 5).map((t, idx) => (
+                        <div
+                          key={idx}
+                          className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between gap-3"
+                        >
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-bold flex-shrink-0 font-mono">
+                              #{t.correlativo || t.ticketId?.replace('TK-', '') || idx + 1001}
+                            </div>
+                            <div className="overflow-hidden">
+                              <div className="text-xs font-bold text-white truncate">
+                                {t.cliente} · {t.telefono}
+                              </div>
+                              <div className="text-[10px] text-slate-400 truncate">
+                                {t.detalle}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                t.origen === 'Web'
+                                  ? 'bg-blue-500/20 text-blue-400'
+                                  : 'bg-emerald-500/20 text-emerald-400'
+                              }`}
+                            >
+                              #{t.ticketId}
+                            </span>
+                            <span className="text-xs font-bold text-white">
+                              S/ {parseFloat(t.total || 0).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
 
@@ -1004,24 +947,33 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/80">
-                      {shippingGuides.map((g) => (
-                        <tr key={g.id} className="hover:bg-slate-800/40 transition-colors">
-                          <td className="p-4">
-                            <span className="font-mono font-bold text-amber-400 bg-slate-800 px-2 py-1 rounded-lg">
-                              #{g.id}
-                            </span>
-                            <div className="text-[10px] text-slate-500 mt-1">{g.awb}</div>
+                      {shippingGuides.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="p-8 text-center text-slate-400">
+                            <span className="material-symbols-outlined text-3xl mb-1 text-slate-600 block">local_shipping</span>
+                            No hay guías de despacho registradas aún. Las nuevas guías aparecerán aquí.
                           </td>
-                          <td className="p-4 font-bold text-white">{g.client}</td>
-                          <td className="p-4 text-slate-300">{g.item}</td>
-                          <td className="p-4">
-                            <span className="px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-400 font-bold text-[11px] border border-blue-500/30">
-                              {g.status}
-                            </span>
-                          </td>
-                          <td className="p-4 text-slate-400">{g.date}</td>
                         </tr>
-                      ))}
+                      ) : (
+                        shippingGuides.map((g) => (
+                          <tr key={g.id} className="hover:bg-slate-800/40 transition-colors">
+                            <td className="p-4">
+                              <span className="font-mono font-bold text-amber-400 bg-slate-800 px-2 py-1 rounded-lg">
+                                #{g.id}
+                              </span>
+                              <div className="text-[10px] text-slate-500 mt-1">{g.awb}</div>
+                            </td>
+                            <td className="p-4 font-bold text-white">{g.client}</td>
+                            <td className="p-4 text-slate-300">{g.item}</td>
+                            <td className="p-4">
+                              <span className="px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-400 font-bold text-[11px] border border-blue-500/30">
+                                {g.status}
+                              </span>
+                            </td>
+                            <td className="p-4 text-slate-400">{g.date}</td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -1077,9 +1029,17 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/80">
-                      {tickets
-                        .filter((t) => ticketFilter === 'todos' || t.origen === ticketFilter)
-                        .map((t, idx) => (
+                      {tickets.filter((t) => ticketFilter === 'todos' || t.origen === ticketFilter).length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-slate-400">
+                            <span className="material-symbols-outlined text-3xl mb-1 text-slate-600 block">inbox</span>
+                            No hay tickets ni pedidos registrados aún. Los pedidos entrantes desde la web y WhatsApp aparecerán aquí automáticamente.
+                          </td>
+                        </tr>
+                      ) : (
+                        tickets
+                          .filter((t) => ticketFilter === 'todos' || t.origen === ticketFilter)
+                          .map((t, idx) => (
                           <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
                             <td className="p-4">
                               <div className="flex items-center gap-2">
@@ -1143,7 +1103,8 @@ export default function AdminPage() {
                               </a>
                             </td>
                           </tr>
-                        ))}
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>

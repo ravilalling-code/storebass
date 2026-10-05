@@ -106,10 +106,12 @@ export function ProductCard({ product, badge, badgeColor, onOpenDetail }: Produc
       <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
         {isSoldOut ? (
           <a
-            href="https://wa.me/51960759244?text=Hola%20Johan,%20deseo%20que%20me%20avises%20cuando%20tengas%20disponible:%20"
+            href={`https://wa.me/51960759244?text=${encodeURIComponent(
+              `🛍️ *STORE BASS — AVISO DE DISPONIBILIDAD* 🇺🇸✈️\n─────────────────────────\n👋 ¡Hola Johan Tovar! Deseo que me avises cuando vuelvas a tener disponible este producto:\n\n📦 *PRODUCTO:* ${product.name}\n🏷️ *CATEGORÍA:* ${product.category}\n💰 *PRECIO ESTIMADO:* S/ ${product.price.toFixed(2)}\n\n¿Tienes previsto traerlo en tu próximo viaje? ¡Muchas gracias! 🙌`
+            )}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-amber-500 hover:text-slate-950 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5"
+            className="w-full py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-amber-500 hover:text-slate-950 font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 active:scale-[0.98]"
           >
             <span className="material-symbols-outlined text-sm">notifications</span>
             <span>Avísame del próximo viaje</span>

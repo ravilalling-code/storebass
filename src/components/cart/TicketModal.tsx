@@ -8,27 +8,35 @@ export function TicketModal() {
 
   if (!isTicketModalOpen || !ticketData) return null;
 
-  // Construir mensaje oficial de WhatsApp para Johan Tovar
-  let msg = `*NUEVO TICKET CORRELATIVO STORE BASS*%0A`;
-  msg += `*Ticket N°:* ${ticketData.ticket_code || ticketData.ticketId}%0A`;
-  msg += `*Cliente:* ${encodeURIComponent(ticketData.cliente)}%0A`;
-  msg += `*Teléfono:* ${encodeURIComponent(ticketData.telefono)}%0A`;
-  msg += `*Origen:* Tienda Web STORE BASS%0A`;
-  msg += `*Fecha:* ${encodeURIComponent(ticketData.fecha || '')}%0A%0A`;
+  // Construir mensaje moderno de WhatsApp para Johan Tovar
+  const ticketCode = ticketData.ticket_code || ticketData.ticketId;
+  let rawMsg = `🛍️ *STORE BASS — PERSONAL SHOPPER USA* 🇺🇸✈️🇵🇪\n`;
+  rawMsg += `─────────────────────────\n`;
+  rawMsg += `🎫 *TICKET CONSECUTIVO:* #${ticketCode}\n`;
+  rawMsg += `👤 *CLIENTE:* ${ticketData.cliente}\n`;
+  rawMsg += `📱 *WHATSAPP:* ${ticketData.telefono}\n`;
+  rawMsg += `📅 *FECHA:* ${ticketData.fecha || ''}\n`;
+  rawMsg += `─────────────────────────\n`;
 
   if (ticketData.items && ticketData.items.length > 0 && ticketData.items[0].title) {
-    msg += `*Artículos de mi carrito:*%0A`;
+    rawMsg += `📦 *PRODUCTOS DEL PEDIDO:*\n`;
     ticketData.items.forEach(i => {
-      msg += `- ${encodeURIComponent(i.title)} (S/ ${Number(i.price).toFixed(2)})%0A`;
+      rawMsg += `• ${i.title} — *S/ ${Number(i.price).toFixed(2)}*\n`;
     });
-    msg += `%0A*Total en Soles:* S/ ${Number(ticketData.total || 0).toFixed(2)}%0A`;
-    msg += `Hola Johan Tovar, acabo de generar mi ticket correlativo en la web. Deseo coordinar la reserva y entrega para el próximo viaje.`;
+    rawMsg += `\n💰 *TOTAL EN SOLES:* S/ ${Number(ticketData.total || 0).toFixed(2)}\n`;
+    rawMsg += `✈️ *VIAJE A USA:* Salida 20 Oct ➔ Entrega en Lima 29 Oct\n`;
+    rawMsg += `🛡️ *GARANTÍA:* Tiendas oficiales USA con boleta/recibo original\n`;
+    rawMsg += `─────────────────────────\n`;
+    rawMsg += `👋 ¡Hola Johan Tovar! Acabo de registrar mi ticket en la web. Deseo coordinar la reserva de cupo y entrega para este viaje. 🙌`;
   } else {
-    msg += `*Detalle para cotizar:*%0A${encodeURIComponent(ticketData.detalle)}%0A%0A`;
-    msg += `Hola Johan Tovar, acabo de generar mi ticket en la web con estos enlaces de USA. ¿Cuál es el precio final en soles y la fecha de entrega?`;
+    rawMsg += `🔗 *ENLACES / DETALLE A COTIZAR:*\n`;
+    rawMsg += `${ticketData.detalle}\n\n`;
+    rawMsg += `✈️ *VIAJE A USA:* Salida 20 Oct ➔ Entrega en Lima 29 Oct\n`;
+    rawMsg += `─────────────────────────\n`;
+    rawMsg += `👋 ¡Hola Johan Tovar! Deseo cotización exacta con precio final en soles y fecha de entrega para este viaje. ¡Muchas gracias! 🙌`;
   }
 
-  const waUrl = `https://wa.me/51960759244?text=${msg}`;
+  const waUrl = `https://wa.me/51960759244?text=${encodeURIComponent(rawMsg)}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md px-4">

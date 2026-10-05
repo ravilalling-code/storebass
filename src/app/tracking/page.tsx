@@ -74,9 +74,9 @@ const DEFAULT_TRACKING: TrackingData = {
       icon: 'flight_takeoff',
     },
     {
-      title: '4. Desaduanaje express SUNAT (0 trámites para ti)',
+      title: '4. Control aduanero e inspección oficial (0 trámites para ti)',
       date: 'Programado: 27 Oct',
-      desc: 'STORE BASS asume el trámite y pago de aranceles legalmente. Canal Verde automático pre-aprobado. Pagas S/ 0 adicional.',
+      desc: 'STORE BASS asume el trámite y control aduanero al 100%. Equipaje y carga declarada en regla. Pagas S/ 0 adicional.',
       status: 'pending',
       icon: 'assured_workload',
     },
@@ -349,7 +349,7 @@ export default function TrackingPage() {
 
           <div className="bg-white dark:bg-darkCard p-6 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-card-subtle">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">
-              Aranceles SUNAT
+              Aduanas e Impuestos
             </span>
             <span className="text-base sm:text-lg font-extrabold text-emerald-600 dark:text-emerald-400">
               {tracking.customs}

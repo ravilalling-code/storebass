@@ -69,7 +69,22 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
   };
 
   const whatsappMessage = encodeURIComponent(
-    `Hola Johan, vi este producto en la web y deseo comprarlo:\n- Producto: ${product.name}\n- Cantidad: ${quantity}\n- Total: S/ ${totalPrice}\n¿Me confirmas disponibilidad para mi pedido?`
+`🛍️ *STORE BASS — COMPRA DIRECTA* 🇺🇸✈️🇵🇪
+─────────────────────────
+👋 ¡Hola Johan Tovar! Vi este producto en el catálogo y deseo asegurar mi pedido:
+
+📦 *PRODUCTO:* ${product.name}
+🏷️ *CATEGORÍA:* ${product.category}
+🔢 *CANTIDAD:* ${quantity} unidad(es)
+💰 *PRECIO UNITARIO:* S/ ${product.price.toFixed(2)}
+💵 *TOTAL A PAGAR:* S/ ${totalPrice}
+🚚 *ENTREGA:* ${product.delivery}
+
+✈️ *PRÓXIMO VIAJE:* Vuelo 20 Oct ➔ Entrega en Lima 29 Oct
+🛡️ *GARANTÍA:* Compra física en tienda oficial de USA con recibo
+
+─────────────────────────
+¿Me confirmas disponibilidad y los datos para reservar mi entrega? ¡Muchas gracias! 🙌`
   );
 
   return (
