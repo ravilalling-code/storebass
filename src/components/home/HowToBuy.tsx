@@ -4,9 +4,6 @@ export function HowToBuy() {
   return (
     <section id="como-comprar" className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
       <div className="text-center max-w-xl mx-auto mb-10">
-        <span className="inline-block text-[11px] font-black text-amber-500 uppercase tracking-widest mb-1">
-          Cero complicaciones
-        </span>
         <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white font-display">
           Tres formas de comprar
         </h2>
@@ -47,7 +44,7 @@ export function HowToBuy() {
           </div>
           <a
             href="#en-stock-hoy"
-            className="mt-6 w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-2xl text-xs transition-colors text-center block"
+            className="mt-6 w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-2xl text-xs transition-all active:scale-[0.98] text-center block"
           >
             Ver productos en stock
           </a>
@@ -83,7 +80,7 @@ export function HowToBuy() {
           </div>
           <a
             href="#catalogo"
-            className="mt-6 w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-2xl text-xs shadow-md transition-all text-center block"
+            className="mt-6 w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-2xl text-xs shadow-md transition-all active:scale-[0.98] text-center block"
           >
             Reservar mi cupo
           </a>
@@ -120,7 +117,7 @@ export function HowToBuy() {
           </div>
           <a
             href="#pedir-link"
-            className="mt-6 w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-2xl text-xs transition-colors text-center block"
+            className="mt-6 w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-2xl text-xs transition-all active:scale-[0.98] text-center block"
           >
             Pedir por link
           </a>

@@ -99,7 +99,7 @@ export function ProductCard({ product, badge, badgeColor }: ProductCardProps) {
         ) : (
           <button
             onClick={handleAdd}
-            className={`w-full py-2 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 ${
+            className={`w-full py-2.5 font-bold rounded-xl text-xs transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 ${
               animating
                 ? 'bg-emerald-500 text-white scale-95'
                 : 'bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:bg-amber-500 dark:hover:bg-amber-400'

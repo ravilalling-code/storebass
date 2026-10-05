@@ -264,10 +264,10 @@ export function QuoteLinkSection() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-8 py-3.5 rounded-2xl text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-8 py-3.5 rounded-2xl text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-base">confirmation_number</span>
-                <span>{loading ? 'Generando Ticket...' : 'Generar Ticket & Pedir Cotización'}</span>
+                <span>{loading ? 'Generando Ticket...' : 'Cotizar mi encargo'}</span>
               </button>
               <p className="text-[11px] text-slate-400 text-center sm:text-right">
                 Genera tu ticket correlativo oficial y coordinamos precio en soles por WhatsApp.
