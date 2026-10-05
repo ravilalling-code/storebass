@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/providers/Providers';
-import { CatalogAdminV2 } from '@/components/admin/CatalogAdminV2';
+import { CatalogModalEnhancements } from '@/components/admin/CatalogModalEnhancements';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -44,7 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${plusJakartaSans.variable} font-sans bg-slate-50 dark:bg-darkBg text-slate-800 dark:text-slate-100 antialiased min-h-screen selection:bg-amber-500 selection:text-slate-950 transition-colors duration-200`}>
         <Providers>
           {children}
-          <CatalogAdminV2 />
+          <CatalogModalEnhancements />
         </Providers>
       </body>
     </html>
