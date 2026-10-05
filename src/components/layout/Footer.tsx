@@ -90,8 +90,6 @@ export function Footer() {
             <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-bold">
               Transferencia BCP y BBVA
             </span>
-            <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-bold">Visa</span>
-            <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-bold">Mastercard</span>
           </div>
           <div className="text-[11px] text-slate-500">
             Entregas en Lima y envíos a todo el Perú
