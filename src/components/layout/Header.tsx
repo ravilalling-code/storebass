@@ -4,15 +4,12 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useTheme } from '@/context/ThemeContext';
 import { useCart } from '@/context/CartContext';
-import { CategoryPills } from './CategoryPills';
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
-  onSelectCategory?: (category: string) => void;
-  activeCategory?: string;
 }
 
-export function Header({ onSearch, onSelectCategory, activeCategory }: HeaderProps) {
+export function Header({ onSearch }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
   const { count, toggleCart } = useCart();
   const [searchVal, setSearchVal] = useState('');
@@ -156,9 +153,6 @@ export function Header({ onSearch, onSelectCategory, activeCategory }: HeaderPro
             </button>
           </div>
         </div>
-
-        {/* Menú de Categorías */}
-        <CategoryPills activeCategory={activeCategory} onSelectCategory={onSelectCategory} />
 
         {/* Buscador para Dispositivos Móviles */}
         <div className="py-2.5 md:hidden border-t border-slate-200/60 dark:border-darkBorder/60">

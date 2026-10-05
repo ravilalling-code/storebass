@@ -5,6 +5,7 @@ import { AnnouncementBar } from '@/components/layout/AnnouncementBar';
 import { Header } from '@/components/layout/Header';
 import { CategoryPills } from '@/components/layout/CategoryPills';
 import { HeroBanner } from '@/components/home/HeroBanner';
+import { FlightScheduleBanner } from '@/components/home/FlightScheduleBanner';
 import { TrustBanner } from '@/components/home/TrustBanner';
 import { FeaturedOffers } from '@/components/home/FeaturedOffers';
 import { CampaignBanner } from '@/components/home/CampaignBanner';
@@ -39,8 +40,11 @@ export default function HomePage() {
 
       {/* Main Content Sections */}
       <main className="flex-1 space-y-6 sm:space-y-10">
-        {/* 4. Hero Banner & Tarjeta del Próximo Viaje */}
+        {/* 4. Hero Banner "Voy a USA" con Showcase de Fotos Interactivo */}
         <HeroBanner onSelectCategory={setActiveCategory} />
+
+        {/* 5. Panel de Próximo Vuelo Confirmado (Ubicado debajo de Voy a USA) */}
+        <FlightScheduleBanner />
 
         {/* 5. 4 Pilares de Confianza & Ticker Tiendas USA */}
         <TrustBanner />

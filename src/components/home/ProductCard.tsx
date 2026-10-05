@@ -8,13 +8,15 @@ interface ProductCardProps {
   product: Product;
   badge?: string;
   badgeColor?: string;
+  onOpenDetail?: (product: Product) => void;
 }
 
-export function ProductCard({ product, badge, badgeColor }: ProductCardProps) {
+export function ProductCard({ product, badge, badgeColor, onOpenDetail }: ProductCardProps) {
   const { addToCart } = useCart();
   const [animating, setAnimating] = useState(false);
 
-  const handleAdd = () => {
+  const handleAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
     addToCart(product.name, product.price);
     setAnimating(true);
     setTimeout(() => setAnimating(false), 900);
@@ -23,15 +25,20 @@ export function ProductCard({ product, badge, badgeColor }: ProductCardProps) {
   const isSoldOut = product.delivery?.toLowerCase().includes('agotado');
 
   return (
-    <div className="product-item bg-white dark:bg-darkCard border border-slate-200/80 dark:border-darkBorder rounded-3xl p-4 shadow-card-subtle flex flex-col justify-between group hover:border-amber-500/40 transition-all">
+    <div className="product-item bg-white dark:bg-darkCard border border-slate-200/80 dark:border-darkBorder rounded-3xl p-4 shadow-card-subtle flex flex-col justify-between group hover:border-amber-500/40 transition-colors">
       <div>
-        <div className="relative rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 aspect-square mb-3">
+        {/* Imagen Interactiva: Abre modal de detalle al hacer clic */}
+        <div
+          onClick={() => onOpenDetail?.(product)}
+          className="relative rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 aspect-square mb-3 cursor-pointer group/img"
+          title="Clic para ver detalles y fotos"
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={product.img}
             alt={product.name}
-            className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${
-              isSoldOut ? 'grayscale group-hover:grayscale-0' : ''
+            className={`w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105 ${
+              isSoldOut ? 'grayscale group-hover/img:grayscale-0' : ''
             }`}
           />
           {badge && (
@@ -43,10 +50,21 @@ export function ProductCard({ product, badge, badgeColor }: ProductCardProps) {
               {badge}
             </span>
           )}
+
+          {/* Overlay hover táctil con icono de zoom/detalle */}
+          <div className="absolute inset-0 bg-slate-950/20 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+            <span className="px-3 py-1.5 rounded-xl bg-slate-900/80 backdrop-blur-md text-white text-[11px] font-bold flex items-center gap-1.5 shadow-md">
+              <span className="material-symbols-outlined text-sm text-amber-400">zoom_in</span>
+              <span>Ver detalle</span>
+            </span>
+          </div>
         </div>
 
         <span className="text-[11px] font-bold text-slate-400 uppercase">{product.category}</span>
-        <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white line-clamp-2 mt-0.5">
+        <h3
+          onClick={() => onOpenDetail?.(product)}
+          className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white line-clamp-2 mt-0.5 cursor-pointer hover:text-amber-500 transition-colors"
+        >
           {product.name}
         </h3>
 

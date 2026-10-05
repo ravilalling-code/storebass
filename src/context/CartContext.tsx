@@ -12,7 +12,7 @@ export interface ToastMessage {
 
 interface CartContextType {
   items: TicketItem[];
-  addToCart: (title: string, price: number) => void;
+  addToCart: (title: string, price: number, qty?: number) => void;
   removeFromCart: (index: number) => void;
   clearCart: () => void;
   isCartOpen: boolean;
@@ -79,10 +79,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  const addToCart = (title: string, price: number) => {
-    const newItems = [...items, { title, price }];
+  const addToCart = (title: string, price: number, qty: number = 1) => {
+    const additions: TicketItem[] = Array.from({ length: qty }, () => ({ title, price }));
+    const newItems = [...items, ...additions];
     saveItems(newItems);
-    showToast(title, `S/ ${price.toFixed(2)} • Agregado al carrito`);
+    showToast(
+      title,
+      qty > 1
+        ? `${qty} unidades • S/ ${(price * qty).toFixed(2)} agregadas al carrito`
+        : `S/ ${price.toFixed(2)} • Agregado al carrito`
+    );
   };
 
   const removeFromCart = (index: number) => {

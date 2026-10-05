@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ProductCard } from './ProductCard';
+import { ProductDetailModal } from './ProductDetailModal';
 import { INITIAL_PRODUCTS } from '@/data/initialCatalog';
 import { Product } from '@/lib/types';
 
@@ -35,6 +36,7 @@ export function CatalogSection({
   const [selectedCat, setSelectedCat] = useState(activeCategoryFilter);
   const [selectedDisp, setSelectedDisp] = useState('todos');
   const [selectedSort, setSelectedSort] = useState<'default' | 'price-asc' | 'price-desc'>('default');
+  const [selectedProductForModal, setSelectedProductForModal] = useState<Product | null>(null);
 
   // Sincronizar si cambia desde la barra superior de categoría o buscador
   useEffect(() => {
@@ -222,10 +224,21 @@ export function CatalogSection({
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
           {filteredProducts.map((prod) => (
-            <ProductCard key={prod.id} product={prod} />
+            <ProductCard
+              key={prod.id}
+              product={prod}
+              onOpenDetail={setSelectedProductForModal}
+            />
           ))}
         </div>
       )}
+
+      {/* Subventana / Modal de Detalle de Producto con Selector de Cantidad */}
+      <ProductDetailModal
+        product={selectedProductForModal}
+        isOpen={!!selectedProductForModal}
+        onClose={() => setSelectedProductForModal(null)}
+      />
     </section>
   );
 }
