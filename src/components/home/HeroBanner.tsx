@@ -1,96 +1,86 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { AdBanner } from '@/lib/types';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { INITIAL_TRENDS } from './TrendsCarousel';
 
 interface HeroBannerProps {
   onSelectCategory?: (category: string) => void;
 }
 
-interface ShowcaseSlide {
-  id: number;
-  tag: string;
-  tagColor: string;
-  title: string;
-  description: string;
-  image: string;
-  actionText: string;
-  actionHref: string;
-  categorySlug?: string;
-}
-
-const SHOWCASE_SLIDES: ShowcaseSlide[] = [
-  {
-    id: 1,
-    tag: 'Tendencias & Outlets USA',
-    tagColor: 'bg-amber-500 text-slate-950',
-    title: 'Sawgrass Mills & Outlets de Miami',
-    description: 'Ropa de marcas top, zapatillas y ofertas directas desde Florida sin intermediarios.',
-    image: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?auto=format&fit=crop&w=900&q=80',
-    actionText: 'Pedir por link',
-    actionHref: '#pedir-link',
-  },
-  {
-    id: 2,
-    tag: 'Tecnología Apple USA',
-    tagColor: 'bg-blue-600 text-white',
-    title: 'Apple Store Lincoln Rd & Fifth Ave',
-    description: 'iPhone 16 Pro, MacBook M3 y AirPods con recibo de compra y garantía oficial Apple.',
-    image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=900&q=80',
-    actionText: 'Ver Apple en catálogo',
-    actionHref: '#catalogo',
-    categorySlug: 'Apple',
-  },
-  {
-    id: 3,
-    tag: 'Belleza & Skincare',
-    tagColor: 'bg-rose-500 text-white',
-    title: 'Sephora & Ulta Beauty USA',
-    description: 'Las fórmulas virales de TikTok, perfumes de lujo y cosmética que no llega a Perú.',
-    image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=900&q=80',
-    actionText: 'Ver Perfumes y Belleza',
-    actionHref: '#catalogo',
-    categorySlug: 'Belleza',
-  },
-  {
-    id: 4,
-    tag: 'Sneakers Exclusivos',
-    tagColor: 'bg-emerald-500 text-white',
-    title: 'Nike, Jordan & New Balance USA',
-    description: 'Colorways y tallas exclusivas del mercado estadounidense traídos en equipaje.',
-    image: 'https://images.unsplash.com/photo-1552346154-21d32810aba3?auto=format&fit=crop&w=900&q=80',
-    actionText: 'Ver Zapatillas',
-    actionHref: '#catalogo',
-    categorySlug: 'Zapatillas',
-  },
-];
-
 export function HeroBanner({ onSelectCategory }: HeroBannerProps) {
+  const [trends, setTrends] = useState<AdBanner[]>(INITIAL_TRENDS);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto-rotación de publicidad / fotos cada 4.5 segundos (pausa si el usuario tiene el mouse encima)
+  // Carga dinámica de imágenes de Tendencias desde Supabase y localStorage (administrable desde el CRM)
+  const loadTrendsData = async () => {
+    try {
+      const stored = localStorage.getItem('storebass_ads');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const activeOnly = parsed.filter((item: AdBanner) => item.active !== false);
+          if (activeOnly.length > 0) setTrends(activeOnly);
+        }
+      }
+
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) return;
+
+      const { data, error } = await supabase
+        .from('ads')
+        .select('*')
+        .eq('active', true)
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        setTrends(data);
+        localStorage.setItem('storebass_ads', JSON.stringify(data));
+      }
+    } catch (err) {
+      console.warn('[HeroBanner] Error al cargar tendencias desde Supabase:', err);
+    }
+  };
+
   useEffect(() => {
-    if (isPaused) return;
+    loadTrendsData();
+
+    const handleUpdate = () => loadTrendsData();
+    window.addEventListener('storebass_ads_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+
+    return () => {
+      window.removeEventListener('storebass_ads_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
+
+  // Auto-rotación del carrusel de imágenes claras cada 5 segundos
+  useEffect(() => {
+    if (isPaused || trends.length <= 1) return;
 
     timerRef.current = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % SHOWCASE_SLIDES.length);
-    }, 4500);
+      setCurrentSlide((prev) => (prev + 1) % trends.length);
+    }, 5000);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isPaused]);
+  }, [isPaused, trends.length]);
 
   const handlePrev = () => {
-    setCurrentSlide((prev) => (prev - 1 + SHOWCASE_SLIDES.length) % SHOWCASE_SLIDES.length);
+    setCurrentSlide((prev) => (prev - 1 + trends.length) % trends.length);
   };
 
   const handleNext = () => {
-    setCurrentSlide((prev) => (prev + 1) % SHOWCASE_SLIDES.length);
+    setCurrentSlide((prev) => (prev + 1) % trends.length);
   };
 
-  const activeItem = SHOWCASE_SLIDES[currentSlide];
+  const activeSlide = trends[currentSlide] || trends[0] || INITIAL_TRENDS[0];
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-2">
@@ -155,106 +145,108 @@ export function HeroBanner({ onSelectCategory }: HeroBannerProps) {
             </div>
           </div>
 
-          {/* Columna Derecha: Showcase Animado Interactivo de Fotos y Publicidad de USA */}
+          {/* Columna Derecha: Carrusel de Imágenes Claras (Tendencias & Novedades desde el CRM) */}
           <div
             className="lg:col-span-5"
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
           >
-            <div className="relative rounded-3xl overflow-hidden bg-slate-900 border border-slate-800 shadow-2xl p-5 text-white min-h-[340px] flex flex-col justify-between group">
-              {/* Imagen de fondo de la diapositiva activa con transición suave Emil Kowalski */}
+            {/* Contenedor de la Imagen Clara con bordes redondeados y marco limpio sin cajas oscuras que tapen la foto */}
+            <div className="relative rounded-3xl overflow-hidden border border-slate-800/90 shadow-2xl min-h-[380px] sm:min-h-[420px] flex flex-col justify-between group bg-slate-900">
+              {/* Carrusel de Diapositivas: Imágenes 100% Claras y Nítidas */}
               <div className="absolute inset-0 overflow-hidden">
-                {SHOWCASE_SLIDES.map((slide, idx) => (
+                {trends.map((slide, idx) => (
                   <div
-                    key={slide.id}
-                    className={`absolute inset-0 transition-opacity duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${
+                    key={slide.id || idx}
+                    className={`absolute inset-0 transition-opacity duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${
                       idx === currentSlide ? 'opacity-100 z-0' : 'opacity-0 -z-10'
                     }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={slide.image}
+                      src={slide.img}
                       alt={slide.title}
-                      className="w-full h-full object-cover opacity-30 transform scale-105 transition-transform duration-1000 ease-out"
+                      className="w-full h-full object-cover object-center transform scale-100 group-hover:scale-105 transition-transform duration-1000 ease-out"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent" />
+                    {/* Gradiente sutil y ligero solo en la base para mantener máxima claridad en la imagen */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent pointer-events-none" />
                   </div>
                 ))}
               </div>
 
-              {/* Contenido superior de la Diapositiva */}
-              <div className="relative z-10 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm transition-colors duration-200 ${activeItem.tagColor}`}
-                  >
-                    {activeItem.tag}
-                  </span>
+              {/* Insignias Superiores Flotantes Translúcidas */}
+              <div className="relative z-10 p-4 flex items-center justify-between">
+                <span className="px-3 py-1 rounded-full bg-slate-950/70 backdrop-blur-md border border-white/15 text-amber-400 text-[10px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                  <span>{activeSlide.tag || 'Tendencias & Novedades'}</span>
+                </span>
 
-                  {/* Contador de Slide */}
-                  <span className="text-[11px] font-bold text-slate-400 bg-slate-950/60 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-slate-800">
-                    {currentSlide + 1} / {SHOWCASE_SLIDES.length}
-                  </span>
-                </div>
+                <span className="text-[11px] font-bold text-white bg-slate-950/70 backdrop-blur-md px-3 py-1 rounded-full border border-white/15 shadow-lg">
+                  {currentSlide + 1} / {trends.length}
+                </span>
+              </div>
 
-                <div className="transition-all duration-200 ease-out">
-                  <h3 className="text-lg sm:text-xl font-black text-white font-display leading-snug">
-                    {activeItem.title}
+              {/* Tarjeta Flotante Inferior de Información y Controles (Elegante, sin tapar la foto) */}
+              <div className="relative z-10 m-3 p-4 rounded-2xl bg-slate-950/80 backdrop-blur-xl border border-white/15 shadow-2xl space-y-3">
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white font-display leading-tight truncate">
+                    {activeSlide.title}
                   </h3>
-                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                    {activeItem.description}
-                  </p>
+                  {activeSlide.subtitle && (
+                    <p className="text-xs text-slate-300 mt-0.5 line-clamp-1 leading-snug">
+                      {activeSlide.subtitle}
+                    </p>
+                  )}
                 </div>
-              </div>
 
-              {/* Controles Inferiores: Botón de Acción, Flechas y Dots */}
-              <div className="relative z-10 pt-4 border-t border-white/10 flex items-center justify-between gap-3">
-                <a
-                  href={activeItem.actionHref}
-                  onClick={() => {
-                    if (activeItem.categorySlug && onSelectCategory) {
-                      onSelectCategory(activeItem.categorySlug);
-                    }
-                  }}
-                  className="px-4 py-2 rounded-xl bg-white text-slate-950 hover:bg-amber-400 font-black text-xs inline-flex items-center gap-1.5 transition-transform active:scale-95 shadow-md"
-                >
-                  <span>{activeItem.actionText}</span>
-                  <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                </a>
+                <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                  <a
+                    href={activeSlide.link || '#catalogo'}
+                    onClick={() => {
+                      if (onSelectCategory && activeSlide.tag) {
+                        onSelectCategory(activeSlide.tag);
+                      }
+                    }}
+                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs inline-flex items-center gap-1.5 transition-transform active:scale-95 shadow-md"
+                  >
+                    <span>{activeSlide.btn_text || activeSlide.btnText || 'Ver novedad'}</span>
+                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                  </a>
 
-                {/* Flechas de Navegación Manual con retroalimentación táctil */}
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={handlePrev}
-                    aria-label="Foto anterior"
-                    className="w-8 h-8 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-slate-700/80 text-white flex items-center justify-center transition-transform active:scale-90"
-                  >
-                    <span className="material-symbols-outlined text-sm">chevron_left</span>
-                  </button>
-                  <button
-                    onClick={handleNext}
-                    aria-label="Foto siguiente"
-                    className="w-8 h-8 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-slate-700/80 text-white flex items-center justify-center transition-transform active:scale-90"
-                  >
-                    <span className="material-symbols-outlined text-sm">chevron_right</span>
-                  </button>
+                  {/* Flechas de Navegación Manual Emil Kowalski Tactile */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={handlePrev}
+                      aria-label="Imagen anterior"
+                      className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-center transition-transform active:scale-90"
+                    >
+                      <span className="material-symbols-outlined text-sm">chevron_left</span>
+                    </button>
+                    <button
+                      onClick={handleNext}
+                      aria-label="Imagen siguiente"
+                      className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-center transition-transform active:scale-90"
+                    >
+                      <span className="material-symbols-outlined text-sm">chevron_right</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              {/* Dots / Barras de Progreso Inferiores */}
-              <div className="relative z-10 flex items-center gap-1.5 mt-2">
-                {SHOWCASE_SLIDES.map((slide, idx) => (
-                  <button
-                    key={slide.id}
-                    onClick={() => setCurrentSlide(idx)}
-                    aria-label={`Ir a foto ${idx + 1}`}
-                    className={`h-1.5 rounded-full transition-all duration-200 ${
-                      idx === currentSlide
-                        ? 'w-6 bg-amber-400'
-                        : 'w-2 bg-slate-700 hover:bg-slate-500'
-                    }`}
-                  />
-                ))}
+                {/* Barra de Progreso y Dots */}
+                <div className="flex items-center gap-1.5 pt-1">
+                  {trends.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentSlide(idx)}
+                      aria-label={`Ir a imagen ${idx + 1}`}
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        idx === currentSlide
+                          ? 'w-6 bg-amber-400'
+                          : 'w-2 bg-white/30 hover:bg-white/60'
+                      }`}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </div>

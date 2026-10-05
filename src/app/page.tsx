@@ -8,7 +8,6 @@ import { HeroBanner } from '@/components/home/HeroBanner';
 import { FlightScheduleBanner } from '@/components/home/FlightScheduleBanner';
 import { TrustBanner } from '@/components/home/TrustBanner';
 import { FeaturedOffers } from '@/components/home/FeaturedOffers';
-import { TrendsCarousel } from '@/components/home/TrendsCarousel';
 import { CatalogSection } from '@/components/home/CatalogSection';
 import { HowToBuy } from '@/components/home/HowToBuy';
 import { QuoteLinkSection } from '@/components/home/QuoteLinkSection';
@@ -54,10 +53,7 @@ export default function HomePage() {
         {/* 6. Ofertas Destacadas */}
         <FeaturedOffers />
 
-        {/* 7. Carrusel de Tendencias & Novedades Gestionable desde el CRM */}
-        <TrendsCarousel />
-
-        {/* 8. Catálogo Completo Unificado (Cero Duplicidad de Encabezados) */}
+        {/* 7. Catálogo Completo Unificado (Cero Duplicidad de Encabezados) */}
         <CatalogSection
           activeCategoryFilter={activeCategory}
           onSelectCategory={setActiveCategory}
