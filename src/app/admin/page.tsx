@@ -318,14 +318,6 @@ export default function AdminPage() {
     showToast(`Ticket #${ticketId} actualizado`, `Nuevo estado: ${newStatus}`);
   };
 
-  if (!authChecked) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-amber-500 font-mono text-sm">
-        Cargando portal de gestión...
-      </div>
-    );
-  }
-
   // 1. Login Screen Overlay if not authenticated
   if (!isAuthenticated) {
     return (
