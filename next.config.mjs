@@ -13,6 +13,35 @@ const nextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: '/admin.html',
+        destination: '/admin',
+        permanent: true,
+      },
+      {
+        source: '/crm.html',
+        destination: '/crm',
+        permanent: true,
+      },
+      {
+        source: '/tracking.html',
+        destination: '/tracking',
+        permanent: true,
+      },
+      {
+        source: '/stock-lima.html',
+        destination: '/stock-lima',
+        permanent: true,
+      },
+      {
+        source: '/index.html',
+        destination: '/',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

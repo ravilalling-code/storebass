@@ -116,14 +116,15 @@ export function Header({ onSearch, onSelectCategory, activeCategory }: HeaderPro
               <span>Rastrea tu pedido</span>
             </a>
 
-            {/* Ícono de Login */}
+            {/* Acceso Administrador / CRM */}
             <Link
               href="/admin"
-              title="Iniciar Sesión"
-              aria-label="Iniciar Sesión"
-              className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-darkElevated text-slate-700 dark:text-slate-300 hover:text-amber-500 hover:bg-slate-200 dark:hover:bg-slate-800 flex items-center justify-center transition-colors"
+              title="Panel Administrador / CRM"
+              aria-label="Panel Administrador / CRM"
+              className="h-10 px-2.5 sm:px-3 rounded-2xl bg-slate-100 dark:bg-darkElevated text-slate-700 dark:text-slate-300 hover:text-amber-500 hover:bg-slate-200 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-colors font-bold text-xs"
             >
-              <span className="material-symbols-outlined text-xl">login</span>
+              <span className="material-symbols-outlined text-lg text-amber-500">admin_panel_settings</span>
+              <span className="hidden sm:inline text-[11px]">CRM</span>
             </Link>
 
             {/* Tema Claro / Oscuro */}

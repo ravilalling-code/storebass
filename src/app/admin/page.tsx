@@ -16,6 +16,7 @@ export default function AdminPage() {
   const [loginUser, setLoginUser] = useState<string>('');
   const [loginPassword, setLoginPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [loginError, setLoginError] = useState<string>('');
 
   // Tab Navigation State
   const [currentTab, setCurrentTab] = useState<
@@ -133,8 +134,9 @@ export default function AdminPage() {
   // Load Initial Storage & Supabase Sync
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const isAuth = sessionStorage.getItem('storebass_admin_auth');
-      setIsAuthenticated(isAuth === 'true');
+      const isAuthSession = sessionStorage.getItem('storebass_admin_auth');
+      const isAuthLocal = localStorage.getItem('storebass_admin_auth');
+      setIsAuthenticated(isAuthSession === 'true' || isAuthLocal === 'true');
       setAuthChecked(true);
 
       // Load products
@@ -214,19 +216,31 @@ export default function AdminPage() {
   // Handle Login Form
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginUser.trim() === 'admin' && loginPassword.trim() === 'adminpj2026') {
+    setLoginError('');
+    const u = loginUser.trim().toLowerCase();
+    const p = loginPassword.trim();
+    if (u === 'admin' && p === 'adminpj2026') {
       sessionStorage.setItem('storebass_admin_auth', 'true');
+      localStorage.setItem('storebass_admin_auth', 'true');
       setIsAuthenticated(true);
       showToast('Bienvenido, Johan Tovar', 'Acceso al panel administrativo concedido');
     } else {
+      setLoginError('Credenciales incorrectas. Verifica usuario (admin) y contraseña.');
       showToast('Credenciales incorrectas', 'Usuario o contraseña no válidos');
     }
   };
 
   const handleLogout = () => {
     sessionStorage.removeItem('storebass_admin_auth');
+    localStorage.removeItem('storebass_admin_auth');
     setIsAuthenticated(false);
     showToast('Sesión cerrada', 'Has salido del panel de administración');
+  };
+
+  const handleQuickFill = () => {
+    setLoginUser('admin');
+    setLoginPassword('adminpj2026');
+    setLoginError('');
   };
 
   // Product CRUD
@@ -339,6 +353,13 @@ export default function AdminPage() {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
+            {loginError && (
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
+                <span className="material-symbols-outlined text-base text-red-400 flex-shrink-0">error</span>
+                <span>{loginError}</span>
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
                 Usuario
@@ -350,8 +371,14 @@ export default function AdminPage() {
                 <input
                   type="text"
                   value={loginUser}
-                  onChange={(e) => setLoginUser(e.target.value)}
+                  onChange={(e) => {
+                    setLoginUser(e.target.value);
+                    if (loginError) setLoginError('');
+                  }}
                   required
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   placeholder="admin"
                   className="w-full bg-slate-800/80 border border-slate-700 text-white rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-amber-500 transition-colors"
                 />
@@ -369,8 +396,13 @@ export default function AdminPage() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
+                  onChange={(e) => {
+                    setLoginPassword(e.target.value);
+                    if (loginError) setLoginError('');
+                  }}
                   required
+                  autoCapitalize="none"
+                  autoCorrect="off"
                   placeholder="••••••••"
                   className="w-full bg-slate-800/80 border border-slate-700 text-white rounded-xl pl-10 pr-10 py-3 text-sm focus:outline-none focus:border-amber-500 transition-colors"
                 />
@@ -391,7 +423,16 @@ export default function AdminPage() {
               className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-3.5 px-4 rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
             >
               <span className="material-symbols-outlined text-xl">login</span>
-              <span>Ingresar</span>
+              <span>Ingresar al CRM</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleQuickFill}
+              className="w-full py-2.5 px-3 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/80 text-[11px] text-amber-400/90 hover:text-amber-300 font-semibold flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <span className="material-symbols-outlined text-sm">key</span>
+              <span>Autocompletar acceso Johan Tovar</span>
             </button>
           </form>
 
