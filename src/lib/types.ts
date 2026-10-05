@@ -9,6 +9,14 @@ export interface Category {
   updated_at?: string;
 }
 
+export interface ProductImage {
+  id?: string;
+  product_id?: string | number;
+  url: string;
+  sort_order?: number;
+  is_primary?: boolean;
+}
+
 export interface Product {
   description?: string;
   id: string | number;
@@ -17,8 +25,11 @@ export interface Product {
   regular_price?: number;
   regularPrice?: number;
   price: number;
+  offer_active?: boolean;
+  offer_price?: number | null;
   delivery: string;
   img: string;
+  images?: ProductImage[];
   active?: boolean;
   created_at?: string;
   updated_at?: string;
