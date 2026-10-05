@@ -21,17 +21,13 @@ jobs:
         run: |
           from pathlib import Path
           import re
-
           path = Path('src/app/admin/page.tsx')
           s = path.read_text()
-
           s = s.replace("'dashboard' | 'catalog' | 'categories' | 'shipping' | 'crm' | 'marketing' | 'settings'", "'dashboard' | 'catalog' | 'categories' | 'crm' | 'marketing' | 'settings'")
           s = s.replace("\n  // Shipping Guides State (Limpias para producción)\n  const [shippingGuides, setShippingGuides] = useState<any[]>([]);\n", "\n")
           s = re.sub(r"\n\s*\{\n\s*id: 'shipping',\n\s*label: 'Monitoreo de Envíos',\n\s*icon: 'flight_takeoff',\n\s*badge: shippingGuides\.length,\n\s*\},", "", s)
           s = s.replace("\n                  : currentTab === 'shipping'\n                  ? 'Monitoreo de Envíos Courier'", "")
-
           s = re.sub(r"\n\s*<div className=\"bg-slate-900 border border-slate-800 p-5 rounded-2xl\">\n\s*<div className=\"flex items-center justify-between mb-3\">\n\s*<span className=\"text-xs font-bold uppercase tracking-wider text-slate-400\">\n\s*Paquetes en Tránsito.*?</div>\n\s*</div>", "", s, count=1, flags=re.S)
-
           old_start = '<div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-2">\n                    <div className="flex items-center justify-between text-xs">\n                      <span className="font-bold text-white">Vuelo Latam Cargo MIA-LIM</span>'
           if old_start in s:
               start = s.index(old_start)
@@ -51,24 +47,12 @@ jobs:
               s = s[:start] + replacement + s[end:]
               s = s.replace("onClick={() => setCurrentTab('shipping')}", "onClick={() => setCurrentTab('settings')}", 1)
               s = s.replace('>\n                    Ver monitoreo de envíos\n', '>\n                    Editar en Ajustes & Viajes\n', 1)
-
           s = re.sub(r"\n\s*\{\/\* TAB 4: SHIPPING \*\/\}.*?(?=\n\s*\{\/\* TAB 5: CRM / TICKETS \*\/\})", "\n", s, flags=re.S)
-
           s = s.replace("img: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=1000&q=80',", "img: '',")
           s = s.replace("alert('Por favor ingresa la URL de la imagen y el título del banner');", "alert('Por favor selecciona una imagen y escribe el título del banner');")
           s = s.replace('Ingresa una URL válida para ver la imagen', 'Selecciona una imagen para ver la previsualización')
           s = re.sub(r"\n\s*\{\/\* URL de la Imagen \*\/\}\n\s*<div>\n\s*<label className=\"block text-slate-400 font-bold mb-1\">\n\s*URL de la Imagen.*?</div>\n", "\n", s, count=1, flags=re.S)
-
           path.write_text(s)
-
-      - name: Verify no obsolete UI remains
-        run: |
-          ! grep -q "photo-1544816155-12df9643f363" src/app/admin/page.tsx
-          ! grep -q "Monitoreo de Envíos" src/app/admin/page.tsx
-          ! grep -q "URL de la Imagen" src/app/admin/page.tsx
-          grep -q "img: ''" src/app/admin/page.tsx
-          grep -q "Editar en Ajustes & Viajes" src/app/admin/page.tsx
-
       - name: Commit cleanup
         run: |
           git config user.name "storebass-bot"
