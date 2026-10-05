@@ -22,6 +22,10 @@ export function MobileBottomNav() {
         <span className="material-symbols-outlined text-xl">storefront</span>
         <span>Catálogo</span>
       </a>
+      <a href="#seguimiento" className="flex flex-col items-center gap-0.5 py-1 px-2.5 hover:text-amber-500 active:scale-90 transition-all">
+        <span className="material-symbols-outlined text-xl text-amber-500" style={{fontVariationSettings:'"FILL" 1'}}>flight_takeoff</span>
+        <span>Pedido</span>
+      </a>
       <button
         onClick={toggleCart}
         className="flex flex-col items-center gap-0.5 py-1 px-2.5 hover:text-amber-500 active:scale-90 transition-all relative"
