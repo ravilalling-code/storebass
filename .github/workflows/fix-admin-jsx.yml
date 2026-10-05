@@ -2,7 +2,8 @@ name: Repair StoreBass admin JSX
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - '.github/workflows/fix-admin-jsx.yml'
 
@@ -14,15 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Apply exact build-verified repair
-        shell: python
+      - name: Apply verified JSX repair
         run: |
+          python3 - <<'PY'
           from pathlib import Path
-          path = Path('src/app/admin/page.tsx')
-          s = path.read_text()
+          p = Path('src/app/admin/page.tsx')
+          s = p.read_text()
           orphan = '''                  <div className="text-2xl font-black text-white">
                     {shippingGuides.length} Guías
                   </div>
@@ -32,20 +31,39 @@ jobs:
                 </div>
 '''
           if orphan not in s:
-              raise SystemExit('Orphan shipping fragment not found')
+              raise SystemExit('Expected orphan shipping fragment not found')
           s = s.replace(orphan, '', 1)
+          marker = '''                  <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold mt-2">
+                    <span className="material-symbols-outlined text-sm">trending_up</span>
+                    <span>Pedidos sincronizados en tiempo real</span>
+                  </div>
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">'''
+          fixed = '''                  <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold mt-2">
+                    <span className="material-symbols-outlined text-sm">trending_up</span>
+                    <span>Pedidos sincronizados en tiempo real</span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">'''
+          if marker not in s:
+              raise SystemExit('Expected missing KPI closing div marker not found')
+          s = s.replace(marker, fixed, 1)
           s = s.replace('Administrar todas las guías', 'Editar en Ajustes & Viajes', 1)
-          path.write_text(s)
+          p.write_text(s)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Verify production build
         run: npm run build
 
-      - name: Commit repair
+      - name: Commit verified repair
         run: |
           git config user.name "storebass-bot"
           git config user.email "actions@users.noreply.github.com"
           git checkout -- next-env.d.ts || true
           git add src/app/admin/page.tsx
           git diff --cached --quiet && exit 0
-          git commit -m "fix(admin): repair dashboard JSX and itinerary action"
+          git commit -m "fix(admin): repair dashboard JSX after cleanup"
           git push origin main
