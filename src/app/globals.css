@@ -106,7 +106,6 @@ button, a, [role="button"], input[type="submit"] {
   animation: slideDrawerIn 260ms var(--ease-drawer) forwards;
 }
 
-/* ─── Emil Kowalski: Stagger fade-in-up ─────────────────────────── */
 @keyframes fadeUp {
   from { transform: translateY(16px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
@@ -120,7 +119,6 @@ button, a, [role="button"], input[type="submit"] {
 .stagger-4 { animation-delay: 180ms; }
 .stagger-5 { animation-delay: 240ms; }
 
-/* ─── Clip-path reveal (left → right) ──────────────────────────── */
 @keyframes revealLR {
   from { clip-path: inset(0 100% 0 0 round 12px); }
   to   { clip-path: inset(0 0%   0 0 round 12px); }
@@ -129,7 +127,6 @@ button, a, [role="button"], input[type="submit"] {
   animation: revealLR 600ms var(--ease-out) both;
 }
 
-/* ─── Subtle float for hero image ───────────────────────────────── */
 @keyframes floatY {
   0%, 100% { transform: translateY(0px); }
   50%       { transform: translateY(-8px); }
@@ -138,7 +135,6 @@ button, a, [role="button"], input[type="submit"] {
   animation: floatY 4s ease-in-out infinite;
 }
 
-/* ─── Shimmer skeleton ──────────────────────────────────────────── */
 @keyframes shimmer {
   from { background-position: -200% center; }
   to   { background-position:  200% center; }
@@ -149,7 +145,6 @@ button, a, [role="button"], input[type="submit"] {
   animation: shimmer 1.6s linear infinite;
 }
 
-/* ─── 3D card tilt on hover (CSS-only, no JS) ───────────────────── */
 .card-3d {
   transform-style: preserve-3d;
   transition: transform 400ms var(--ease-out);
@@ -159,7 +154,6 @@ button, a, [role="button"], input[type="submit"] {
   transform: rotateX(3deg) rotateY(-3deg) scale(1.02);
 }
 
-/* ─── Emil: scale-down on press for any button/link ─────────────── */
 .press-scale {
   transition: transform 160ms var(--ease-out);
 }
@@ -167,7 +161,14 @@ button, a, [role="button"], input[type="submit"] {
   transform: scale(0.97);
 }
 
-/* ─── Reduced motion: keep opacity fades, remove movement ─────── */
+/* CRM > Marketing > Carrusel: la imagen se sube al Storage y el cliente solo ve la fotografía.
+   Se ocultan URL manual, Badge/CTA y enlace de destino para evitar configuraciones que ya no usa el hero. */
+.fixed.inset-0 .max-w-lg form.space-y-4.text-xs > div:nth-of-type(3),
+.fixed.inset-0 .max-w-lg form.space-y-4.text-xs > div:nth-of-type(6),
+.fixed.inset-0 .max-w-lg form.space-y-4.text-xs > div:nth-of-type(7) {
+  display: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
   .animate-reveal,
