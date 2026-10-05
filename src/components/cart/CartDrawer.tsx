@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useCart } from '@/context/CartContext';
 
 export function CartDrawer() {
-  const { isCartOpen, closeCart, items, removeFromCart, total, count, generateTicket } = useCart();
+  const { isCartOpen, closeCart, items, removeFromCart, total, count, generateTicket, clearCart } = useCart();
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,7 +26,10 @@ export function CartDrawer() {
         items,
         total,
       });
+      clearCart();
       closeCart();
+      setCustomerName('');
+      setCustomerPhone('');
 
       // Enviar automáticamente a Johan por WhatsApp con el ticket y acceso directo al CRM
       const ticketCode = ticket.ticket_code || ticket.ticketId;

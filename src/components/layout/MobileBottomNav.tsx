@@ -22,9 +22,9 @@ export function MobileBottomNav() {
         <span className="material-symbols-outlined text-xl">storefront</span>
         <span>Catálogo</span>
       </a>
-      <a href="#pedir-link" className="flex flex-col items-center gap-0.5 py-1 px-2.5 hover:text-amber-500 active:scale-90 transition-all">
-        <span className="material-symbols-outlined text-xl">add_link</span>
-        <span>Pedir Link</span>
+      <a href="#seguimiento" className="flex flex-col items-center gap-0.5 py-1 px-2.5 hover:text-amber-500 active:scale-90 transition-all">
+        <span className="material-symbols-outlined text-xl text-blue-500">radar</span>
+        <span>Seguimiento</span>
       </a>
       <button
         onClick={toggleCart}

@@ -9,6 +9,7 @@ export function TrackingPreview() {
   const [foundTicket, setFoundTicket] = useState<any | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [viewMode, setViewMode] = useState<'timeline' | 'telemetry'>('timeline');
 
   const steps = [
     {
@@ -255,76 +256,162 @@ export function TrackingPreview() {
           </div>
         )}
 
-        {/* ESTADO 3: PEDIDO ENCONTRADO (Muestra Timeline Real) */}
+        {/* ESTADO 3: PEDIDO ENCONTRADO (Muestra Timeline Real o Telemetría) */}
         {hasSearched && foundTicket && (
           <div className="space-y-6 animate-pop">
-            {/* 6-step Timeline */}
-            <div className="pt-2">
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-                {steps.map((step) => {
-                  const isPassed = step.num < activeStep;
-                  const isCurrent = step.num === activeStep;
-
-                  if (isCurrent) {
-                    return (
-                      <div
-                        key={step.num}
-                        className="p-3.5 rounded-2xl bg-amber-500/15 border-2 border-amber-500 text-slate-900 dark:text-white space-y-2 text-center shadow-md relative scale-[1.02] transition-all"
-                      >
-                        <div className="w-8 h-8 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center mx-auto shadow-sm animate-pulse">
-                          <span className="material-symbols-outlined text-sm font-black">flight_takeoff</span>
-                        </div>
-                        <span className="block text-[10px] uppercase font-bold text-amber-500">
-                          Paso {step.num} • Actual
-                        </span>
-                        <h4 className="text-xs font-black">{step.title}</h4>
-                        <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-tight font-medium">
-                          {step.desc}
-                        </p>
-                      </div>
-                    );
-                  }
-
-                  if (isPassed) {
-                    return (
-                      <div
-                        key={step.num}
-                        className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-slate-900 dark:text-white space-y-2 text-center transition-all"
-                      >
-                        <div className="w-8 h-8 rounded-full bg-emerald-500 text-white font-black text-xs flex items-center justify-center mx-auto shadow-sm">
-                          <span className="material-symbols-outlined text-sm">check</span>
-                        </div>
-                        <span className="block text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400">
-                          Paso {step.num}
-                        </span>
-                        <h4 className="text-xs font-black">{step.title}</h4>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
-                          {step.desc}
-                        </p>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div
-                      key={step.num}
-                      className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-400 space-y-2 text-center transition-all"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs flex items-center justify-center mx-auto">
-                        {step.num}
-                      </div>
-                      <span className="block text-[10px] uppercase font-bold text-slate-400">
-                        Paso {step.num}
-                      </span>
-                      <h4 className="text-xs font-bold text-slate-600 dark:text-slate-400">{step.title}</h4>
-                      <p className="text-[10px] text-slate-400 leading-tight">{step.desc}</p>
-                    </div>
-                  );
-                })}
+            {/* Switcher de Vistas: 6 Pasos vs Telemetría en Vivo */}
+            <div className="flex items-center justify-between flex-wrap gap-2 pt-1 border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('timeline')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    viewMode === 'timeline'
+                      ? 'bg-white dark:bg-darkCard text-amber-600 dark:text-amber-400 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-sm">checklist</span>
+                  <span>6 Pasos del Pedido</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('telemetry')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    viewMode === 'telemetry'
+                      ? 'bg-white dark:bg-darkCard text-blue-600 dark:text-blue-400 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-sm text-blue-500 animate-pulse">flight_takeoff</span>
+                  <span>Telemetría de Vuelo en Vivo</span>
+                </button>
               </div>
+
+              <Link
+                href="/tracking"
+                className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                <span className="material-symbols-outlined text-sm">radar</span>
+                <span>Ver radar aéreo completo en /tracking</span>
+                <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              </Link>
             </div>
 
-            {/* Info card of consulted order */}
+            {/* VISTA 1: TELEMETRÍA EN VIVO (VUELO MIAMI ➔ LIMA) */}
+            {viewMode === 'telemetry' ? (
+              <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border border-blue-500/30 text-white space-y-4 shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                      Telemetría en Vivo · Miami (MIA) ➔ Lima (LIM)
+                    </span>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-mono font-bold border border-blue-500/30 self-start sm:self-auto">
+                    Manifiesto Aéreo AWB 001-9283-4819
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                  <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Vuelo / Ruta</span>
+                    <span className="text-sm font-black text-amber-400">AA-917 (MIA ➔ LIM)</span>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Altitud Crucero</span>
+                    <span className="text-sm font-black text-white">34,000 pies</span>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Velocidad</span>
+                    <span className="text-sm font-black text-white">870 km/h</span>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Aduanas Perú</span>
+                    <span className="text-sm font-black text-emerald-400">100% Pagadas (S/ 0)</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 pt-2 gap-2">
+                  <span className="text-center sm:text-left">Equipaje personal verificado e inspeccionado por Johan Tovar en Miami.</span>
+                  <Link
+                    href="/tracking"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 font-bold transition-colors"
+                  >
+                    <span>Abrir radar aéreo y mapa en vivo</span>
+                    <span className="material-symbols-outlined text-sm">open_in_new</span>
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              /* VISTA 2: LÍNEA DE 6 PASOS COMERCIALES */
+              <div className="pt-2">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                  {steps.map((step) => {
+                    const isPassed = step.num < activeStep;
+                    const isCurrent = step.num === activeStep;
+
+                    if (isCurrent) {
+                      return (
+                        <div
+                          key={step.num}
+                          className="p-3.5 rounded-2xl bg-amber-500/15 border-2 border-amber-500 text-slate-900 dark:text-white space-y-2 text-center shadow-md relative scale-[1.02] transition-all"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center mx-auto shadow-sm animate-pulse">
+                            <span className="material-symbols-outlined text-sm font-black">flight_takeoff</span>
+                          </div>
+                          <span className="block text-[10px] uppercase font-bold text-amber-500">
+                            Paso {step.num} • Actual
+                          </span>
+                          <h4 className="text-xs font-black">{step.title}</h4>
+                          <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-tight font-medium">
+                            {step.desc}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    if (isPassed) {
+                      return (
+                        <div
+                          key={step.num}
+                          className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-slate-900 dark:text-white space-y-2 text-center transition-all"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-emerald-500 text-white font-black text-xs flex items-center justify-center mx-auto shadow-sm">
+                            <span className="material-symbols-outlined text-sm">check</span>
+                          </div>
+                          <span className="block text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400">
+                            Paso {step.num}
+                          </span>
+                          <h4 className="text-xs font-black">{step.title}</h4>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                            {step.desc}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={step.num}
+                        className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-400 space-y-2 text-center transition-all"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs flex items-center justify-center mx-auto">
+                          {step.num}
+                        </div>
+                        <span className="block text-[10px] uppercase font-bold text-slate-400">
+                          Paso {step.num}
+                        </span>
+                        <h4 className="text-xs font-bold text-slate-600 dark:text-slate-400">{step.title}</h4>
+                        <p className="text-[10px] text-slate-400 leading-tight">{step.desc}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Ficha resumida del pedido consultado */}
             <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center flex-shrink-0">
@@ -340,7 +427,7 @@ export function TrackingPreview() {
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Cliente: <strong>{foundTicket.cliente}</strong> · Total: <strong>S/ {parseFloat(foundTicket.total || 0).toFixed(2)}</strong> · Entrega Lima: <strong>29 de Octubre</strong>
+                    Cliente: <strong>{foundTicket.cliente}</strong> · Detalle: <strong>{foundTicket.detalle}</strong>
                   </p>
                 </div>
               </div>
@@ -350,7 +437,8 @@ export function TrackingPreview() {
                   href="/tracking"
                   className="px-3.5 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl flex items-center gap-1 transition-colors"
                 >
-                  <span>Ver seguimiento completo</span>
+                  <span className="material-symbols-outlined text-sm text-blue-500">radar</span>
+                  <span>Ver telemetría completa</span>
                   <span className="material-symbols-outlined text-sm">arrow_forward</span>
                 </Link>
                 <a
@@ -368,6 +456,31 @@ export function TrackingPreview() {
             </div>
           </div>
         )}
+
+        {/* Banner permanente de enlace cruzado entre ambos tipos de rastreo */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-blue-600/10 via-amber-500/10 to-emerald-500/10 border border-blue-500/20">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-500 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined text-xl animate-pulse">radar</span>
+            </div>
+            <div>
+              <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                ¿Deseas ver la telemetría en tiempo real del vuelo internacional?
+              </span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                Conoce la altitud, velocidad, manifiesto AWB y control aduanero en vivo en nuestra pantalla de radar.
+              </span>
+            </div>
+          </div>
+          <Link
+            href="/tracking"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md transition-all whitespace-nowrap active:scale-95 flex-shrink-0"
+          >
+            <span className="material-symbols-outlined text-sm">flight_takeoff</span>
+            <span>Rastreo en Vivo Miami ➔ Lima</span>
+            <span className="material-symbols-outlined text-sm">arrow_forward</span>
+          </Link>
+        </div>
       </div>
     </section>
   );

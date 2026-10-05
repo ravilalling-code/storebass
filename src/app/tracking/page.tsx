@@ -199,13 +199,24 @@ export default function TrackingPage() {
       <Header />
 
       <main className="flex-1 pt-6 pb-20 max-w-7xl mx-auto px-4 sm:px-6 w-full">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-6">
-          <Link href="/" className="hover:text-amber-500 transition-colors">
-            Inicio
+        {/* Breadcrumb & Acceso a Seguimiento de 6 Pasos */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <Link href="/" className="hover:text-amber-500 transition-colors">
+              Inicio
+            </Link>
+            <span>/</span>
+            <span className="font-bold text-slate-800 dark:text-white">Rastreo en Vivo</span>
+          </div>
+
+          <Link
+            href="/#seguimiento"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 hover:text-amber-500 bg-amber-500/10 px-3 py-1.5 rounded-xl border border-amber-500/20 w-fit transition-colors"
+          >
+            <span className="material-symbols-outlined text-sm">checklist</span>
+            <span>Ver Seguimiento en 6 Pasos de tu Ticket</span>
+            <span className="material-symbols-outlined text-sm">arrow_forward</span>
           </Link>
-          <span>/</span>
-          <span className="font-bold text-slate-800 dark:text-white">Rastreo en Vivo</span>
         </div>
 
         {/* Hero de Búsqueda de Tracking */}

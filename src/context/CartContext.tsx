@@ -224,6 +224,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       // Ignorar error
     }
 
+    // Vaciar carrito automáticamente una vez confirmado y generado el ticket
+    if (tipo === 'compra_lista' || ticketItems.length > 0) {
+      clearCart();
+    }
+
     openTicketModal(newTicket);
     return newTicket;
   };
