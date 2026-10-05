@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useCart } from '@/context/CartContext';
+import { WhatsAppIcon } from '@/components/ui/WhatsAppIcon';
 
 export function TicketModal() {
   const { isTicketModalOpen, ticketData, closeTicketModal } = useCart();
@@ -141,9 +142,9 @@ export function TicketModal() {
             href={waUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-white font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.97]"
+            className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-white font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.97]"
           >
-            <span className="material-symbols-outlined text-lg">chat</span>
+            <WhatsAppIcon className="w-5 h-5 text-white shrink-0" />
             <span>Continuar a WhatsApp con Ticket #{ticketData.ticket_code || ticketData.ticketId}</span>
           </a>
 

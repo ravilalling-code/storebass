@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { WhatsAppIcon } from '@/components/ui/WhatsAppIcon';
 
 export function FlightScheduleBanner() {
   return (
@@ -97,9 +98,9 @@ export function FlightScheduleBanner() {
               )}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-700/80 font-bold rounded-2xl text-xs flex items-center justify-center gap-1.5 transition-transform active:scale-[0.97] text-center"
+              className="py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-700/80 font-bold rounded-2xl text-xs flex items-center justify-center gap-2 transition-transform active:scale-[0.97] text-center"
             >
-              <span className="material-symbols-outlined text-sm text-emerald-400">chat</span>
+              <WhatsAppIcon className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>Consultar cupo por WhatsApp</span>
             </a>
           </div>

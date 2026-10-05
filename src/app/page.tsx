@@ -20,6 +20,7 @@ import { CartDrawer } from '@/components/cart/CartDrawer';
 import { TicketModal } from '@/components/cart/TicketModal';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { AiShoppingAssistant } from '@/components/assistant/AiShoppingAssistant';
+import { WhatsAppIcon } from '@/components/ui/WhatsAppIcon';
 
 export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState<string>('todos');
@@ -96,9 +97,9 @@ export default function HomePage() {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Habla conmigo por WhatsApp"
-        className="hidden sm:flex fixed bottom-6 right-6 z-40 bg-emerald-500 hover:bg-emerald-400 text-white font-black px-4 py-3 rounded-full shadow-2xl items-center gap-2 transform hover:scale-105 active:scale-95 transition-all"
+        className="hidden sm:flex fixed bottom-6 right-6 z-40 bg-emerald-500 hover:bg-emerald-400 text-white font-black px-4 py-3 rounded-full shadow-2xl items-center gap-2.5 transform hover:scale-105 active:scale-95 transition-all"
       >
-        <span className="material-symbols-outlined text-2xl">chat</span>
+        <WhatsAppIcon className="w-5 h-5 text-white" />
         <span className="text-xs">Habla con Johan</span>
       </a>
     </div>

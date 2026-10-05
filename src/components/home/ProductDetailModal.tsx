@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Product } from '@/lib/types';
 import { useCart } from '@/context/CartContext';
+import { WhatsAppIcon } from '@/components/ui/WhatsAppIcon';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -246,7 +247,7 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
                 rel="noopener noreferrer"
                 className="w-full py-2.5 px-4 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-bold text-xs flex items-center justify-center gap-2 transition-transform active:scale-[0.98]"
               >
-                <span className="material-symbols-outlined text-base">chat</span>
+                <WhatsAppIcon className="w-4 h-4 text-emerald-500 shrink-0" />
                 <span>Pedir directo por WhatsApp (S/ {totalPrice})</span>
               </a>
             </div>

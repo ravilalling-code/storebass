@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { WhatsAppIcon } from '@/components/ui/WhatsAppIcon';
 
 const DEFAULT_ANNOUNCEMENTS = [
   'Próximo viaje: voy el 20 de Octubre y regreso el 29 de Octubre',
@@ -50,9 +51,9 @@ export function AnnouncementBar() {
             href="https://wa.me/51960759244"
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:text-amber-400 transition-colors flex items-center gap-1"
+            className="hover:text-amber-400 transition-colors flex items-center gap-1.5"
           >
-            <span className="material-symbols-outlined text-sm text-emerald-400">chat</span>
+            <WhatsAppIcon className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span className="hidden sm:inline">WhatsApp:</span> <span>960 759 244</span>
           </a>
         </div>

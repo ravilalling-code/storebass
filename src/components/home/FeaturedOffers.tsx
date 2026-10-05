@@ -1,10 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ProductCard } from './ProductCard';
+import { ProductDetailModal } from './ProductDetailModal';
 import { INITIAL_PRODUCTS } from '@/data/initialCatalog';
+import { Product } from '@/lib/types';
 
 export function FeaturedOffers() {
+  const [selectedProductForModal, setSelectedProductForModal] = useState<Product | null>(null);
   const offerProducts = INITIAL_PRODUCTS.slice(0, 4);
 
   const badges = [
@@ -43,9 +46,17 @@ export function FeaturedOffers() {
             product={prod}
             badge={badges[idx]?.badge}
             badgeColor={badges[idx]?.color}
+            onOpenDetail={setSelectedProductForModal}
           />
         ))}
       </div>
+
+      {/* Modal de Detalle de Producto de Oferta */}
+      <ProductDetailModal
+        product={selectedProductForModal}
+        isOpen={!!selectedProductForModal}
+        onClose={() => setSelectedProductForModal(null)}
+      />
     </section>
   );
 }
