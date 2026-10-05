@@ -14,19 +14,7 @@ interface CatalogSectionProps {
   onSelectCategory?: (category: string) => void;
 }
 
-const CATEGORY_TABS = [
-  { name: 'Todos', slug: 'todos' },
-  { name: 'En stock Lima', slug: 'stock', isStock: true },
-  { name: 'Perfumes', slug: 'Perfumes' },
-  { name: 'Belleza', slug: 'Belleza' },
-  { name: 'Tecnología', slug: 'Tecnología' },
-  { name: 'Apple', slug: 'Apple' },
-  { name: 'Relojes', slug: 'Relojes' },
-  { name: 'Moda', slug: 'Moda' },
-  { name: 'Zapatillas', slug: 'Zapatillas' },
-  { name: 'Suplementos', slug: 'Suplementos' },
-  { name: 'Hogar', slug: 'Hogar' },
-];
+
 
 export function CatalogSection({
   products = INITIAL_PRODUCTS,
@@ -106,12 +94,7 @@ export function CatalogSection({
     }
   }, [activeCategoryFilter]);
 
-  const handleTabClick = (slug: string) => {
-    setSelectedCat(slug);
-    if (onSelectCategory) {
-      onSelectCategory(slug);
-    }
-  };
+
 
   // Filtrado reactivo de productos
   let filteredProducts = currentProducts.filter((p) => {
@@ -171,7 +154,11 @@ export function CatalogSection({
             <span>Catálogo Oficial de Compras</span>
           </div>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 dark:text-white font-display">
-            Catálogo del Viaje a USA
+            {selectedCat === 'todos'
+              ? 'Catálogo del Viaje a USA'
+              : selectedCat === 'stock'
+              ? 'En Stock en Lima'
+              : `${selectedCat} — Importado de USA`}
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-xl">
             Artículos 100% originales comprados en tiendas autorizadas de USA con precio final en Soles.
@@ -192,27 +179,6 @@ export function CatalogSection({
             </button>
           )}
         </div>
-      </div>
-
-      {/* 2. Pestañas de Categoría Interactivas */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 text-xs">
-        {CATEGORY_TABS.map((tab) => {
-          const isActive = selectedCat.toLowerCase() === tab.slug.toLowerCase();
-          return (
-            <button
-              key={tab.slug}
-              onClick={() => handleTabClick(tab.slug)}
-              className={`px-4 py-2 rounded-2xl font-bold transition-all active:scale-[0.98] flex items-center gap-1.5 flex-shrink-0 ${
-                isActive
-                  ? 'bg-slate-950 text-white dark:bg-white dark:text-slate-950 shadow-md'
-                  : 'bg-white dark:bg-darkCard text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-darkBorder hover:border-amber-500/50'
-              }`}
-            >
-              {tab.isStock && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>}
-              <span>{tab.name}</span>
-            </button>
-          );
-        })}
       </div>
 
       {/* 3. Barra de Control Compacta (Ordenar y Disponibilidad) */}
