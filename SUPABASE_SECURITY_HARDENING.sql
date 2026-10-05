@@ -12,6 +12,8 @@
 -- tendrán privilegios de mutación.
 -- -------------------------------------------------------------------------
 
+DROP FUNCTION IF EXISTS public.is_admin() CASCADE;
+
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -141,6 +143,9 @@ CREATE POLICY "ShippingTracking - Gestion exclusiva admin"
 -- la base de datos completa ni los datos sensibles de otros compradores.
 -- -------------------------------------------------------------------------
 
+DROP FUNCTION IF EXISTS public.fn_track_order(TEXT, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS public.fn_track_order CASCADE;
+
 CREATE OR REPLACE FUNCTION public.fn_track_order(
     p_code TEXT,
     p_phone TEXT DEFAULT NULL
@@ -186,6 +191,12 @@ GRANT EXECUTE ON FUNCTION public.fn_track_order TO anon, authenticated, service_
 -- -------------------------------------------------------------------------
 -- PASO 4: FUNCIÓN ATÓMICA GENERADORA DE TICKETS (CONSECUTIVO BLINDADO)
 -- -------------------------------------------------------------------------
+
+CREATE SEQUENCE IF NOT EXISTS public.storebass_ticket_seq START WITH 1004 INCREMENT BY 1;
+GRANT USAGE, SELECT ON SEQUENCE public.storebass_ticket_seq TO anon, authenticated, service_role;
+
+DROP FUNCTION IF EXISTS public.fn_create_ticket(TEXT, TEXT, TEXT, TEXT, NUMERIC, TEXT, TEXT, JSONB) CASCADE;
+DROP FUNCTION IF EXISTS public.fn_create_ticket CASCADE;
 
 CREATE OR REPLACE FUNCTION public.fn_create_ticket(
     p_origen TEXT DEFAULT 'Web',
