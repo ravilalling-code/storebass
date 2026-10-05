@@ -21,7 +21,7 @@ interface ShowcaseSlide {
 const SHOWCASE_SLIDES: ShowcaseSlide[] = [
   {
     id: 1,
-    tag: 'Shopping en Vivo',
+    tag: 'Tendencias & Outlets USA',
     tagColor: 'bg-amber-500 text-slate-950',
     title: 'Sawgrass Mills & Outlets de Miami',
     description: 'Ropa de marcas top, zapatillas y ofertas directas desde Florida sin intermediarios.',

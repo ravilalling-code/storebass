@@ -15,12 +15,12 @@ export function getSupabaseBrowserClient(): SupabaseClient | null {
   const storedUrl = localStorage.getItem('storebass_supabase_url');
   const storedKey = localStorage.getItem('storebass_supabase_key');
 
-  const defaultUrl = 'https://zaokqljaadbidnamklvb.supabase.co';
+  const defaultUrl = 'https://iolvevkovlogbsluqkwe.supabase.co';
+  const defaultKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlvbHZldmtvdmxvZ2JzbHVxa3dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExNTM2NTIsImV4cCI6MjEwNjcyOTY1Mn0.2bMKVlFx1SNCOEWlZ8vtgI-iklMDUo2nhAWl-KccBT4';
   const url = (storedUrl || envUrl || defaultUrl).trim();
-  const key = (storedKey || envKey || '').trim();
+  const key = (storedKey || envKey || defaultKey).trim();
 
   if (!url || !key) {
-    // Si aún no se configuró la anon key, retornamos null de forma segura
     return null;
   }
 

@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { INITIAL_PRODUCTS } from '@/data/initialCatalog';
+import { INITIAL_TRENDS } from '@/components/home/TrendsCarousel';
+import { AdBanner } from '@/lib/types';
 import { useToast } from '@/context/CartContext';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
@@ -76,27 +78,20 @@ export default function AdminPage() {
     activeTripLabel: '20 Oct - 29 Oct',
   });
 
-  // Marketing Banners State
-  const [ads, setAds] = useState([
-    {
-      id: 1,
-      badge: 'BLACK FRIDAY EARLY ACCESS',
-      title: 'Descuentos de hasta 50% en Best Buy & Amazon',
-      desc: 'Compro tus encargos de tecnología y gadgets al precio de oferta oficial de USA sin comisiones ocultas.',
-      img: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=800&q=80',
-      link: '#pedir-link',
-      active: true,
-    },
-    {
-      id: 2,
-      badge: 'PERFUMERÍA EXCLUSIVA USA',
-      title: 'Perfumes Árabes y Diseñador 100% Originales',
-      desc: 'Lattafa, Dior Sauvage, Chanel y Tom Ford comprados en tiendas autorizadas con batch code comprobable.',
-      img: 'https://images.unsplash.com/photo-1547887537-6158d64c35b3?auto=format&fit=crop&w=800&q=80',
-      link: '#catalogo',
-      active: true,
-    },
-  ]);
+  // Marketing Banners & Tendencias State
+  const [ads, setAds] = useState<AdBanner[]>(INITIAL_TRENDS);
+  const [bannerModalOpen, setBannerModalOpen] = useState(false);
+  const [editingBannerId, setEditingBannerId] = useState<string | number | null>(null);
+  const [bannerForm, setBannerForm] = useState({
+    title: '',
+    subtitle: '',
+    tag: 'Tendencia USA',
+    btn_text: 'Pedir por link',
+    link: '#pedir-link',
+    img: '',
+    active: true,
+    display_order: 1,
+  });
 
   // Load Initial Storage & Supabase Sync
   useEffect(() => {
@@ -132,19 +127,45 @@ export default function AdminPage() {
         }
       }
 
-      // Try reading tickets from Supabase Cloud if available
-      const supabase = getSupabaseBrowserClient();
-      supabase
-        .from('tickets')
-        .select('*')
-        .order('id', { ascending: false })
-        .limit(50)
-        .then(({ data, error }) => {
-          if (!error && data && data.length > 0) {
-            setTickets(data);
-            localStorage.setItem('storebass_tickets', JSON.stringify(data));
+      // Load ads from localStorage
+      const savedAds = localStorage.getItem('storebass_ads');
+      if (savedAds) {
+        try {
+          const parsed = JSON.parse(savedAds);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setAds(parsed);
           }
-        });
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      // Try reading tickets & ads from Supabase Cloud if available
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        supabase
+          .from('tickets')
+          .select('*')
+          .order('id', { ascending: false })
+          .limit(50)
+          .then(({ data, error }) => {
+            if (!error && data && data.length > 0) {
+              setTickets(data);
+              localStorage.setItem('storebass_tickets', JSON.stringify(data));
+            }
+          });
+
+        supabase
+          .from('ads')
+          .select('*')
+          .order('display_order', { ascending: true })
+          .then(({ data, error }) => {
+            if (!error && data && data.length > 0) {
+              setAds(data);
+              localStorage.setItem('storebass_ads', JSON.stringify(data));
+            }
+          });
+      }
     }
   }, []);
 
@@ -252,13 +273,161 @@ export default function AdminPage() {
 
     // Try updating Supabase Cloud
     const supabase = getSupabaseBrowserClient();
-    supabase
-      .from('tickets')
-      .update({ estado: newStatus })
-      .eq('ticket_id', ticketId)
-      .then();
+    if (supabase) {
+      supabase
+        .from('tickets')
+        .update({ estado: newStatus })
+        .eq('ticket_id', ticketId)
+        .then();
+    }
 
     showToast(`Ticket #${ticketId} actualizado`, `Nuevo estado: ${newStatus}`);
+  };
+
+  // ==========================================
+  // BANNER & TENDENCIAS CRUD HANDLERS
+  // ==========================================
+  const handleOpenAddBanner = () => {
+    setEditingBannerId(null);
+    setBannerForm({
+      title: '',
+      subtitle: '',
+      tag: 'Tendencia USA',
+      btn_text: 'Pedir por link',
+      link: '#pedir-link',
+      img: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=1000&q=80',
+      active: true,
+      display_order: ads.length + 1,
+    });
+    setBannerModalOpen(true);
+  };
+
+  const handleEditBanner = (ad: AdBanner) => {
+    setEditingBannerId(ad.id || null);
+    setBannerForm({
+      title: ad.title || '',
+      subtitle: ad.subtitle || '',
+      tag: ad.tag || 'Tendencia USA',
+      btn_text: ad.btn_text || ad.btnText || 'Pedir por link',
+      link: ad.link || '#pedir-link',
+      img: ad.img || '',
+      active: ad.active !== false,
+      display_order: ad.display_order || 1,
+    });
+    setBannerModalOpen(true);
+  };
+
+  const handleSaveBanner = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bannerForm.img || !bannerForm.title) {
+      alert('Por favor ingresa la URL de la imagen y el título del banner');
+      return;
+    }
+
+    let updated: AdBanner[];
+    const supabase = getSupabaseBrowserClient();
+
+    if (editingBannerId !== null) {
+      updated = ads.map((a) =>
+        a.id === editingBannerId
+          ? {
+              ...a,
+              ...bannerForm,
+            }
+          : a
+      );
+      showToast('Imagen del carrusel actualizada', bannerForm.title);
+
+      if (supabase) {
+        try {
+          await supabase
+            .from('ads')
+            .update({
+              title: bannerForm.title,
+              subtitle: bannerForm.subtitle,
+              tag: bannerForm.tag,
+              btn_text: bannerForm.btn_text,
+              link: bannerForm.link,
+              img: bannerForm.img,
+              active: bannerForm.active,
+              display_order: bannerForm.display_order,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', editingBannerId);
+        } catch (err) {
+          console.warn('Error al actualizar banner en Supabase:', err);
+        }
+      }
+    } else {
+      const newAd: AdBanner = {
+        id: Date.now(),
+        ...bannerForm,
+      };
+      updated = [newAd, ...ads];
+      showToast('Nueva imagen añadida al carrusel', bannerForm.title);
+
+      if (supabase) {
+        try {
+          await supabase.from('ads').insert([
+            {
+              title: bannerForm.title,
+              subtitle: bannerForm.subtitle,
+              tag: bannerForm.tag,
+              btn_text: bannerForm.btn_text,
+              link: bannerForm.link,
+              img: bannerForm.img,
+              active: bannerForm.active,
+              display_order: bannerForm.display_order,
+            },
+          ]);
+        } catch (err) {
+          console.warn('Error al insertar banner en Supabase:', err);
+        }
+      }
+    }
+
+    setAds(updated);
+    localStorage.setItem('storebass_ads', JSON.stringify(updated));
+    window.dispatchEvent(new Event('storebass_ads_updated'));
+    setBannerModalOpen(false);
+    setEditingBannerId(null);
+  };
+
+  const handleToggleBannerActive = async (id: string | number) => {
+    const updated = ads.map((a) => (a.id === id ? { ...a, active: !a.active } : a));
+    setAds(updated);
+    localStorage.setItem('storebass_ads', JSON.stringify(updated));
+    window.dispatchEvent(new Event('storebass_ads_updated'));
+
+    const toggled = updated.find((a) => a.id === id);
+    showToast(toggled?.active ? 'Imagen activada en web' : 'Imagen ocultada');
+
+    const supabase = getSupabaseBrowserClient();
+    if (supabase && toggled) {
+      try {
+        await supabase.from('ads').update({ active: toggled.active }).eq('id', id);
+      } catch (err) {
+        console.warn('Error syncing banner active status to Supabase:', err);
+      }
+    }
+  };
+
+  const handleDeleteBanner = async (id: string | number) => {
+    if (!confirm('¿Estás seguro de eliminar esta imagen del carrusel de tendencias?')) return;
+    const updated = ads.filter((a) => a.id !== id);
+    setAds(updated);
+    localStorage.setItem('storebass_ads', JSON.stringify(updated));
+    window.dispatchEvent(new Event('storebass_ads_updated'));
+    showToast('Imagen eliminada del carrusel');
+
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      try {
+        await supabase.from('ads').delete().eq('id', id);
+      } catch (err) {
+        console.warn('Error deleting banner in Supabase:', err);
+      }
+    }
   };
 
   // 1. Login Screen Overlay if not authenticated
@@ -428,7 +597,12 @@ export default function AdminPage() {
                 icon: 'confirmation_number',
                 badge: tickets.length,
               },
-              { id: 'marketing', label: 'Publicidad & Banners', icon: 'campaign' },
+              {
+                id: 'marketing',
+                label: 'Tendencias & Banners',
+                icon: 'auto_awesome',
+                badge: ads.filter((a) => a.active !== false).length,
+              },
               { id: 'settings', label: 'Ajustes & Viajes', icon: 'tune' },
             ].map((tab) => {
               const isActive = currentTab === tab.id;
@@ -1112,52 +1286,117 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* TAB 6: MARKETING */}
+          {/* TAB 6: TENDENCIAS & BANNERS DEL CARRUSEL */}
           {currentTab === 'marketing' && (
             <div className="space-y-6">
-              <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
+              <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-base font-bold text-white">
-                    Publicidad, Banners & Campañas Activas
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <span className="material-symbols-outlined text-amber-500">auto_awesome</span>
+                    <span>Gestor de Imágenes: Carrusel de Tendencias & Novedades</span>
                   </h3>
-                  <p className="text-xs text-slate-400">
-                    Banners dinámicos sincronizados con la página principal
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Modifica las imágenes, textos y enlaces que se exhiben en el carrusel de la página de inicio.
                   </p>
                 </div>
+                <button
+                  onClick={handleOpenAddBanner}
+                  className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs inline-flex items-center gap-2 transition-transform active:scale-95 shadow-md flex-shrink-0"
+                >
+                  <span className="material-symbols-outlined text-base">add_photo_alternate</span>
+                  <span>Añadir Imagen / Novedad</span>
+                </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {ads.map((ad) => (
-                  <div
-                    key={ad.id}
-                    className="bg-slate-900 border border-slate-800 rounded-3xl p-5 overflow-hidden flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="w-full h-40 rounded-2xl overflow-hidden relative mb-4">
-                        <Image
-                          src={ad.img}
-                          alt={ad.title}
-                          fill
-                          className="object-cover"
-                          sizes="400px"
-                        />
-                        <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black uppercase">
-                          {ad.badge}
-                        </span>
+              {ads.length === 0 ? (
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-10 text-center text-slate-400 space-y-3">
+                  <span className="material-symbols-outlined text-4xl text-slate-600">collections</span>
+                  <p className="text-sm font-bold text-slate-300">No hay imágenes en el carrusel</p>
+                  <p className="text-xs text-slate-500">Haz clic en &ldquo;Añadir Imagen / Novedad&rdquo; para agregar tu primera diapositiva.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {ads.map((ad, idx) => (
+                    <div
+                      key={ad.id || idx}
+                      className="bg-slate-900 border border-slate-800 rounded-3xl p-5 overflow-hidden flex flex-col justify-between hover:border-slate-700 transition-all shadow-xl group"
+                    >
+                      <div>
+                        {/* Previsualización de la Imagen */}
+                        <div className="w-full h-44 rounded-2xl overflow-hidden relative mb-4 bg-slate-950 border border-slate-800">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={ad.img}
+                            alt={ad.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+                          <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black uppercase tracking-wider shadow-sm">
+                            {ad.tag || 'Tendencia USA'}
+                          </span>
+                          <span className="absolute bottom-2.5 right-3 text-[10px] text-white/80 font-bold bg-slate-900/80 px-2 py-0.5 rounded-md backdrop-blur-sm">
+                            Posición #{idx + 1}
+                          </span>
+                        </div>
+
+                        <h4 className="text-base font-extrabold text-white mb-1.5 leading-snug">
+                          {ad.title}
+                        </h4>
+                        {ad.subtitle && (
+                          <p className="text-xs text-slate-400 mb-3 line-clamp-2 leading-relaxed">
+                            {ad.subtitle}
+                          </p>
+                        )}
+
+                        <div className="text-[11px] text-slate-500 space-y-1 mb-4">
+                          <p className="truncate">
+                            <span className="text-slate-400 font-semibold">Enlace:</span> {ad.link || '#catalogo'}
+                          </p>
+                          <p>
+                            <span className="text-slate-400 font-semibold">Botón:</span> {ad.btn_text || ad.btnText || 'Pedir'}
+                          </p>
+                        </div>
                       </div>
-                      <h4 className="text-base font-extrabold text-white mb-2">{ad.title}</h4>
-                      <p className="text-xs text-slate-400 mb-4">{ad.desc}</p>
-                    </div>
 
-                    <div className="flex items-center justify-between pt-3 border-t border-slate-800 text-xs text-slate-400">
-                      <span>Destino: {ad.link}</span>
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-[10px]">
-                        Activo en Web
-                      </span>
+                      {/* Barra de Acciones: Cambiar Imagen, Toggle Activo y Eliminar */}
+                      <div className="pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleBannerActive(ad.id!)}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${
+                            ad.active !== false
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                              : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          {ad.active !== false ? '● Activo en Web' : '○ Oculto'}
+                        </button>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleEditBanner(ad)}
+                            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-300 font-bold text-xs flex items-center gap-1 transition-all active:scale-95"
+                            title="Cambiar imagen o editar textos"
+                          >
+                            <span className="material-symbols-outlined text-sm">edit</span>
+                            <span>Editar</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteBanner(ad.id!)}
+                            className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-rose-950 hover:text-rose-400 text-slate-400 flex items-center justify-center transition-all active:scale-95"
+                            title="Eliminar del carrusel"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -1429,6 +1668,177 @@ export default function AdminPage() {
                   className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl"
                 >
                   Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Banner / Tendencias Modal */}
+      {bannerModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <span className="material-symbols-outlined text-amber-500">auto_awesome</span>
+                <span>{editingBannerId !== null ? 'Modificar Imagen de Tendencia' : 'Añadir Nueva Imagen al Carrusel'}</span>
+              </h3>
+              <button
+                onClick={() => setBannerModalOpen(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveBanner} className="space-y-4 text-xs">
+              {/* Previsualización en Vivo de la Imagen */}
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">Previsualización de la Imagen</label>
+                <div className="w-full h-40 rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 relative flex items-center justify-center">
+                  {bannerForm.img ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={bannerForm.img}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="text-slate-600 flex flex-col items-center gap-1">
+                      <span className="material-symbols-outlined text-3xl">image</span>
+                      <span className="text-[11px]">Ingresa una URL válida para ver la imagen</span>
+                    </div>
+                  )}
+                  {bannerForm.tag && (
+                    <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[9px] font-black uppercase shadow-md">
+                      {bannerForm.tag}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* URL de la Imagen */}
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">
+                  URL de la Imagen <span className="text-amber-500">*</span>
+                </label>
+                <input
+                  type="url"
+                  required
+                  value={bannerForm.img}
+                  onChange={(e) => setBannerForm({ ...bannerForm, img: e.target.value })}
+                  placeholder="https://images.unsplash.com/... o enlace directo a imagen"
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Puedes usar imágenes directas de Unsplash, Google Drive público, Imgur o tu CDN.
+                </p>
+              </div>
+
+              {/* Título Principal */}
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">
+                  Título del Producto o Novedad <span className="text-amber-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={bannerForm.title}
+                  onChange={(e) => setBannerForm({ ...bannerForm, title: e.target.value })}
+                  placeholder="Ej. Stanley Quencher H2.0 FlowState 40oz"
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* Subtítulo / Descripción */}
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">
+                  Descripción o Detalle de Oportunidad
+                </label>
+                <textarea
+                  rows={2}
+                  value={bannerForm.subtitle}
+                  onChange={(e) => setBannerForm({ ...bannerForm, subtitle: e.target.value })}
+                  placeholder="Ej. El termo viral de TikTok traído en colores exclusivos directamente de tiendas oficiales de USA."
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500 resize-none"
+                />
+              </div>
+
+              {/* Grid: Etiqueta y Texto del Botón */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">
+                    Etiqueta / Badge
+                  </label>
+                  <input
+                    type="text"
+                    value={bannerForm.tag}
+                    onChange={(e) => setBannerForm({ ...bannerForm, tag: e.target.value })}
+                    placeholder="Ej. Viral en TikTok USA"
+                    className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">
+                    Texto del Botón CTA
+                  </label>
+                  <input
+                    type="text"
+                    value={bannerForm.btn_text}
+                    onChange={(e) => setBannerForm({ ...bannerForm, btn_text: e.target.value })}
+                    placeholder="Ej. Pedir por link"
+                    className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              {/* Enlace de Destino */}
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">
+                  Enlace de Destino (Link)
+                </label>
+                <input
+                  type="text"
+                  value={bannerForm.link}
+                  onChange={(e) => setBannerForm({ ...bannerForm, link: e.target.value })}
+                  placeholder="#pedir-link, #catalogo o https://wa.me/..."
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* Toggle Activo */}
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="banner-active"
+                  checked={bannerForm.active}
+                  onChange={(e) => setBannerForm({ ...bannerForm, active: e.target.checked })}
+                  className="w-4 h-4 rounded text-amber-500 focus:ring-0 bg-slate-800 border-slate-700 cursor-pointer"
+                />
+                <label htmlFor="banner-active" className="text-slate-300 font-semibold cursor-pointer">
+                  Mostrar esta imagen activamente en el carrusel de la tienda
+                </label>
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setBannerModalOpen(false)}
+                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl shadow-md transition-transform active:scale-95"
+                >
+                  Guardar Imagen
                 </button>
               </div>
             </form>

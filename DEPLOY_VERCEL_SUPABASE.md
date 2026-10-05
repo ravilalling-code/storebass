@@ -43,8 +43,8 @@ Tan pronto como hagas el `git push origin main`:
 
 ### Variables de Entorno en Vercel:
 En tu proyecto de Vercel (**Settings ➔ Environment Variables**), asegúrate de tener configuradas:
-- `NEXT_PUBLIC_SUPABASE_URL`: `https://zaokqljaadbidnamklvb.supabase.co`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Tu clave anónima pública de Supabase (`anon` `public`).
+- `NEXT_PUBLIC_SUPABASE_URL`: `https://iolvevkovlogbsluqkwe.supabase.co`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlvbHZldmtvdmxvZ2JzbHVxa3dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExNTM2NTIsImV4cCI6MjEwNjcyOTY1Mn0.2bMKVlFx1SNCOEWlZ8vtgI-iklMDUo2nhAWl-KccBT4`
 - `NEXT_PUBLIC_ADMIN_NAME`: `Johan Tovar`
 - `NEXT_PUBLIC_WHATSAPP_PHONE`: `51960759244`
 
