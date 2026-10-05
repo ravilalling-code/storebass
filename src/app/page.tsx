@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AnnouncementBar } from '@/components/layout/AnnouncementBar';
 import { Header } from '@/components/layout/Header';
 import { CategoryPills } from '@/components/layout/CategoryPills';
@@ -20,23 +20,29 @@ import { TicketModal } from '@/components/cart/TicketModal';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 
 export default function HomePage() {
+  const [activeCategory, setActiveCategory] = useState<string>('todos');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
   return (
     <div className="min-h-screen flex flex-col pb-16 sm:pb-0">
       {/* 1. Barra de Anuncios Rotativa */}
       <AnnouncementBar />
 
-      {/* 2. Header Oficial con Logo, Buscador, Dark Mode, Carrito y Acceso a Admin */}
-      <Header />
+      {/* 2. Header Oficial con Logo, Buscador, Dark Mode, Carrito y Acceso a Login */}
+      <Header onSearch={setSearchQuery} />
 
-      {/* 3. Accesos Rápidos por Categoría y Atajos Lima Stock / Pedir Link */}
-      <CategoryPills />
+      {/* 3. Accesos Rápidos por Categoría sincronizados con el Catálogo */}
+      <CategoryPills
+        activeCategory={activeCategory}
+        onSelectCategory={setActiveCategory}
+      />
 
       {/* Main Content Sections */}
       <main className="flex-1 space-y-6 sm:space-y-10">
         {/* 4. Hero Banner & Tarjeta del Próximo Viaje */}
-        <HeroBanner />
+        <HeroBanner onSelectCategory={setActiveCategory} />
 
-        {/* 5. 4 Pilares de Confianza */}
+        {/* 5. 4 Pilares de Confianza & Ticker Tiendas USA */}
         <TrustBanner />
 
         {/* 6. Ofertas Destacadas */}
@@ -45,8 +51,12 @@ export default function HomePage() {
         {/* 7. Publicidad y Banners Oficiales del CRM */}
         <CampaignBanner />
 
-        {/* 8. Catálogo Completo por Secciones con Filtros */}
-        <CatalogSection />
+        {/* 8. Catálogo Completo Unificado (Cero Duplicidad de Encabezados) */}
+        <CatalogSection
+          activeCategoryFilter={activeCategory}
+          onSelectCategory={setActiveCategory}
+          searchFilter={searchQuery}
+        />
 
         {/* 9. Tres Formas de Comprar */}
         <HowToBuy />

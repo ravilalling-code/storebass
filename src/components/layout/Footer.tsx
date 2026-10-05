@@ -74,7 +74,7 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/admin" className="hover:text-amber-500 transition-colors">
-                  Acceso Administrador
+                  Administración
                 </Link>
               </li>
             </ul>

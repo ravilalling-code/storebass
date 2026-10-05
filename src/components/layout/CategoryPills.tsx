@@ -58,8 +58,13 @@ export function CategoryPills({
         {/* Accesos Directos a Stock y Link */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <a
-            href="#en-stock-hoy"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-extrabold hover:bg-emerald-500/25 active:scale-[0.98] transition-all"
+            href="#catalogo"
+            onClick={e => handleClick(e, 'stock')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-extrabold transition-all active:scale-[0.98] ${
+              activeCategory === 'stock'
+                ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
+                : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
+            }`}
           >
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span>Stock Lima</span>

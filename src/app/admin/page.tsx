@@ -223,10 +223,10 @@ export default function AdminPage() {
       sessionStorage.setItem('storebass_admin_auth', 'true');
       localStorage.setItem('storebass_admin_auth', 'true');
       setIsAuthenticated(true);
-      showToast('Bienvenido, Johan Tovar', 'Acceso al panel administrativo concedido');
+      showToast('Bienvenido', 'Acceso al panel administrativo concedido');
     } else {
-      setLoginError('Credenciales incorrectas. Verifica usuario (admin) y contraseña.');
-      showToast('Credenciales incorrectas', 'Usuario o contraseña no válidos');
+      setLoginError('Usuario o contraseña incorrectos.');
+      showToast('Acceso denegado', 'Credenciales no válidas');
     }
   };
 
@@ -235,12 +235,6 @@ export default function AdminPage() {
     localStorage.removeItem('storebass_admin_auth');
     setIsAuthenticated(false);
     showToast('Sesión cerrada', 'Has salido del panel de administración');
-  };
-
-  const handleQuickFill = () => {
-    setLoginUser('admin');
-    setLoginPassword('adminpj2026');
-    setLoginError('');
   };
 
   // Product CRUD
@@ -349,7 +343,7 @@ export default function AdminPage() {
             <h1 className="text-2xl font-black tracking-tight text-white font-display">
               STORE <span className="text-amber-500">BASS</span>
             </h1>
-            <p className="text-xs text-slate-400 mt-1">Gestión Central Johan Tovar</p>
+            <p className="text-xs text-slate-400 mt-1">Acceso Administrativo Restringido</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -379,7 +373,7 @@ export default function AdminPage() {
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
-                  placeholder="admin"
+                  placeholder="Usuario"
                   className="w-full bg-slate-800/80 border border-slate-700 text-white rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-amber-500 transition-colors"
                 />
               </div>
@@ -403,7 +397,7 @@ export default function AdminPage() {
                   required
                   autoCapitalize="none"
                   autoCorrect="off"
-                  placeholder="••••••••"
+                  placeholder="Contraseña"
                   className="w-full bg-slate-800/80 border border-slate-700 text-white rounded-xl pl-10 pr-10 py-3 text-sm focus:outline-none focus:border-amber-500 transition-colors"
                 />
                 <button
@@ -423,16 +417,7 @@ export default function AdminPage() {
               className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-3.5 px-4 rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
             >
               <span className="material-symbols-outlined text-xl">login</span>
-              <span>Ingresar al CRM</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleQuickFill}
-              className="w-full py-2.5 px-3 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/80 text-[11px] text-amber-400/90 hover:text-amber-300 font-semibold flex items-center justify-center gap-1.5 transition-colors"
-            >
-              <span className="material-symbols-outlined text-sm">key</span>
-              <span>Autocompletar acceso Johan Tovar</span>
+              <span>Iniciar Sesión</span>
             </button>
           </form>
 

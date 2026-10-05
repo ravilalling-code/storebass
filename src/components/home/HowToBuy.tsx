@@ -43,7 +43,7 @@ export function HowToBuy() {
             </ul>
           </div>
           <a
-            href="#en-stock-hoy"
+            href="#catalogo"
             className="mt-6 w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-2xl text-xs transition-all active:scale-[0.98] text-center block"
           >
             Ver productos en stock
