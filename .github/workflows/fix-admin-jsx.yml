@@ -17,28 +17,25 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Repair malformed dashboard fragment
+      - name: Apply exact build-verified repair
         shell: python
         run: |
           from pathlib import Path
           path = Path('src/app/admin/page.tsx')
           s = path.read_text()
-          broken = '''                </div>
-                  <div className="text-2xl font-black text-white">
+          orphan = '''                  <div className="text-2xl font-black text-white">
                     {shippingGuides.length} Guías
                   </div>
                   <div className="text-xs text-blue-300 font-bold mt-2 flex items-center gap-1">
                     <span>✈️ Miami Hub ➔ Lima Callao</span>
                   </div>
                 </div>
-
-                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">'''
-          fixed = '''                </div>
-
-                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">'''
-          if broken not in s:
-              raise SystemExit('Expected malformed dashboard fragment not found')
-          path.write_text(s.replace(broken, fixed, 1))
+'''
+          if orphan not in s:
+              raise SystemExit('Orphan shipping fragment not found')
+          s = s.replace(orphan, '', 1)
+          s = s.replace('Administrar todas las guías', 'Editar en Ajustes & Viajes', 1)
+          path.write_text(s)
 
       - name: Verify production build
         run: npm run build
@@ -47,7 +44,8 @@ jobs:
         run: |
           git config user.name "storebass-bot"
           git config user.email "actions@users.noreply.github.com"
+          git checkout -- next-env.d.ts || true
           git add src/app/admin/page.tsx
           git diff --cached --quiet && exit 0
-          git commit -m "fix(admin): remove orphan shipping JSX and restore dashboard build"
+          git commit -m "fix(admin): repair dashboard JSX and itinerary action"
           git push origin main
