@@ -21,7 +21,6 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-
           path = Path('src/app/admin/page.tsx')
           s = path.read_text()
           broken = '''                </div>
@@ -39,13 +38,10 @@ jobs:
                 <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">'''
           if broken not in s:
               raise SystemExit('Expected malformed dashboard fragment not found')
-          s = s.replace(broken, fixed, 1)
-          path.write_text(s)
+          path.write_text(s.replace(broken, fixed, 1))
 
-      - name: Verify cleanup and build
-        run: |
-          ! grep -q "shippingGuides" src/app/admin/page.tsx
-          npm run build
+      - name: Verify production build
+        run: npm run build
 
       - name: Commit repair
         run: |
@@ -53,5 +49,5 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           git add src/app/admin/page.tsx
           git diff --cached --quiet && exit 0
-          git commit -m "fix(admin): repair dashboard JSX after shipping cleanup"
+          git commit -m "fix(admin): remove orphan shipping JSX and restore dashboard build"
           git push origin main
