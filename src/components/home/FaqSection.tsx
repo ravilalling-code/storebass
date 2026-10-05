@@ -144,7 +144,10 @@ export function FaqSection() {
               </button>
 
               <div
-                className={`grid transition-all duration-200 ease-in-out ${
+                style={{
+                  transition: 'grid-template-rows 220ms cubic-bezier(0.23, 1, 0.32, 1), opacity 200ms ease-out',
+                }}
+                className={`grid ${
                   isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                 }`}
               >
@@ -182,7 +185,7 @@ export function FaqSection() {
           <button
             type="submit"
             disabled={isTyping}
-            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition-colors shadow-sm disabled:opacity-50"
+            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition-all active:scale-[0.97] shadow-sm disabled:opacity-50"
           >
             <span>Preguntar</span>
             <span className="material-symbols-outlined text-sm">send</span>

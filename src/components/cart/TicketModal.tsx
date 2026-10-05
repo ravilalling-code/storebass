@@ -36,7 +36,7 @@ export function TicketModal() {
         {/* Botón Cerrar */}
         <button
           onClick={closeTicketModal}
-          className="absolute right-5 top-5 p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+          className="absolute right-5 top-5 p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all active:scale-[0.95]"
           aria-label="Cerrar voucher"
         >
           <span className="material-symbols-outlined text-lg">close</span>
@@ -129,7 +129,7 @@ export function TicketModal() {
             href={waUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-white font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all"
+            className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-white font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.97]"
           >
             <span className="material-symbols-outlined text-lg">chat</span>
             <span>Continuar a WhatsApp con Ticket #{ticketData.ticket_code || ticketData.ticketId}</span>

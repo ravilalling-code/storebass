@@ -84,9 +84,22 @@ button, a, [role="button"], input[type="submit"] {
 }
 
 @keyframes popIn {
-  from { transform: scale(0.94); opacity: 0; }
+  from { transform: scale(0.95); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
 .animate-pop {
-  animation: popIn 200ms var(--ease-spring);
+  animation: popIn 200ms var(--ease-out) forwards;
+}
+
+@keyframes toastEnter {
+  from { transform: translateY(-10px) scale(0.96); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes slideDrawerIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.animate-drawer {
+  animation: slideDrawerIn 260ms var(--ease-drawer) forwards;
 }
