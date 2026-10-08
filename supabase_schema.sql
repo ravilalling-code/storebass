@@ -37,10 +37,17 @@ CREATE TABLE IF NOT EXISTS public.products (
     price NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
     delivery TEXT NOT NULL DEFAULT 'Llega en mi próximo regreso',
     img TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    offer_active BOOLEAN NOT NULL DEFAULT FALSE,
+    offer_price NUMERIC(10, 2),
     active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT TIMEZONE('America/Lima', NOW()),
     updated_at TIMESTAMPTZ DEFAULT TIMEZONE('America/Lima', NOW())
 );
+
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS offer_active BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS offer_price NUMERIC(10, 2);
 
 -- =========================================================================
 -- 5. TABLA: TICKETS CORRELATIVOS (WEB & WHATSAPP UNIFICADOS)
@@ -105,12 +112,37 @@ CREATE TABLE IF NOT EXISTS public.trip_config (
         "Reserva ahora lo que llega en mi regreso",
         "Productos en stock disponibles en Lima"
     ]'::jsonb,
+    departure_place TEXT NOT NULL DEFAULT 'Lima',
+    arrival_place TEXT NOT NULL DEFAULT 'Miami',
+    order_deadline_lima DATE,
+    order_deadline_usa DATE,
+    exchange_rate NUMERIC(10, 4) NOT NULL DEFAULT 3.75,
     updated_at TIMESTAMPTZ DEFAULT TIMEZONE('America/Lima', NOW()),
     CONSTRAINT single_row_trip_config CHECK (id = 1)
 );
 
+ALTER TABLE public.trip_config ADD COLUMN IF NOT EXISTS departure_place TEXT NOT NULL DEFAULT 'Lima';
+ALTER TABLE public.trip_config ADD COLUMN IF NOT EXISTS arrival_place TEXT NOT NULL DEFAULT 'Miami';
+ALTER TABLE public.trip_config ADD COLUMN IF NOT EXISTS order_deadline_lima DATE;
+ALTER TABLE public.trip_config ADD COLUMN IF NOT EXISTS order_deadline_usa DATE;
+ALTER TABLE public.trip_config ADD COLUMN IF NOT EXISTS exchange_rate NUMERIC(10, 4) NOT NULL DEFAULT 3.75;
+
 -- =========================================================================
--- 8. TABLA: MONITOREO DE ENVÍOS (TRACKING COURIER)
+-- 8. TABLA: GALERÍA DE IMÁGENES MÚLTIPLES POR PRODUCTO
+-- =========================================================================
+CREATE TABLE IF NOT EXISTS public.product_images (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('America/Lima', NOW())
+);
+
+CREATE INDEX IF NOT EXISTS product_images_product_id_idx ON public.product_images(product_id, sort_order);
+
+-- =========================================================================
+-- 9. TABLA: MONITOREO DE ENVÍOS (TRACKING COURIER)
 -- =========================================================================
 CREATE TABLE IF NOT EXISTS public.shipping_tracking (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -267,6 +299,31 @@ CREATE POLICY "Tracking visible para todos" ON public.shipping_tracking
 
 CREATE POLICY "Tracking modificable por administrador" ON public.shipping_tracking
     FOR ALL USING (auth.role() = 'authenticated' OR auth.role() = 'service_role');
+
+-- PRODUCT IMAGES: Lectura pública; Escritura para administrador
+ALTER TABLE public.product_images ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.product_images TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.product_images TO authenticated, service_role;
+
+DROP POLICY IF EXISTS "Public can view product images" ON public.product_images;
+CREATE POLICY "Public can view product images" ON public.product_images FOR SELECT TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Authenticated manages product images" ON public.product_images;
+CREATE POLICY "Authenticated manages product images" ON public.product_images FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- REALTIME PUBLICATIONS: Tickets, Trip Config, Products
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'tickets') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.tickets;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'trip_config') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.trip_config;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'products') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.products;
+  END IF;
+END $$;
 
 -- Permiso de ejecución y uso de secuencia para clientes web
 GRANT USAGE, SELECT ON SEQUENCE public.storebass_ticket_seq TO anon, authenticated, service_role;

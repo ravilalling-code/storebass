@@ -3,27 +3,47 @@
 import React, { useEffect, useState } from 'react';
 import { ProductCard } from './ProductCard';
 import { ProductDetailModal } from './ProductDetailModal';
+import { INITIAL_PRODUCTS } from '@/data/initialCatalog';
 import { Product } from '@/lib/types';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
+const FALLBACK_OFFERS: Product[] = INITIAL_PRODUCTS.slice(0, 4);
+
 export function FeaturedOffers() {
   const [selectedProductForModal, setSelectedProductForModal] = useState<Product | null>(null);
-  const [offerProducts, setOfferProducts] = useState<Product[]>([]);
+  const [offerProducts, setOfferProducts] = useState<Product[]>(FALLBACK_OFFERS);
 
   useEffect(() => {
     const loadOffers = async () => {
       const supabase = getSupabaseBrowserClient();
       if (!supabase) return;
-      const { data, error } = await supabase.from('products').select('*').eq('active', true).eq('offer_active', true).order('updated_at', { ascending: false }).limit(8);
-      if (error) { console.warn('No se pudieron cargar ofertas:', error); return; }
-      setOfferProducts((data || []).map((p: any) => ({ ...p, regularPrice: Number(p.regular_price ?? p.price), price: Number(p.offer_price ?? p.price), offer_price: p.offer_price == null ? null : Number(p.offer_price) })));
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .eq('active', true)
+          .eq('offer_active', true)
+          .order('updated_at', { ascending: false })
+          .limit(8);
+
+        if (!error && data && data.length > 0) {
+          setOfferProducts(
+            data.map((p: any) => ({
+              ...p,
+              regularPrice: Number(p.regular_price ?? p.price),
+              price: Number(p.offer_price ?? p.price),
+              offer_price: p.offer_price == null ? null : Number(p.offer_price),
+            }))
+          );
+        }
+      } catch (err) {
+        console.warn('No se pudieron cargar ofertas de Supabase, usando catálogo base:', err);
+      }
     };
     void loadOffers();
     window.addEventListener('storebass_products_updated', loadOffers);
     return () => window.removeEventListener('storebass_products_updated', loadOffers);
   }, []);
-
-  if (offerProducts.length === 0) return null;
 
   return (
     <section id="ofertas" className="max-w-7xl mx-auto px-4 sm:px-6 py-10">

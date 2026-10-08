@@ -323,6 +323,40 @@ CREATE POLICY "Eliminacion admin storebass"
     );
 
 -- =========================================================================
+-- PRODUCTOS Y GALERÍA MULTIMEDIA: CAMPOS NUEVOS Y RLS ENDURECIDO
+-- =========================================================================
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS offer_active BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS offer_price NUMERIC(10, 2);
+
+ALTER TABLE public.trip_config ADD COLUMN IF NOT EXISTS departure_place TEXT NOT NULL DEFAULT 'Lima';
+ALTER TABLE public.trip_config ADD COLUMN IF NOT EXISTS arrival_place TEXT NOT NULL DEFAULT 'Miami';
+ALTER TABLE public.trip_config ADD COLUMN IF NOT EXISTS order_deadline_lima DATE;
+ALTER TABLE public.trip_config ADD COLUMN IF NOT EXISTS order_deadline_usa DATE;
+ALTER TABLE public.trip_config ADD COLUMN IF NOT EXISTS exchange_rate NUMERIC(10, 4) NOT NULL DEFAULT 3.75;
+
+CREATE TABLE IF NOT EXISTS public.product_images (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('America/Lima', NOW())
+);
+
+CREATE INDEX IF NOT EXISTS product_images_product_id_idx ON public.product_images(product_id, sort_order);
+
+ALTER TABLE public.product_images ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.product_images TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.product_images TO authenticated;
+
+DROP POLICY IF EXISTS "product_images_select_public" ON public.product_images;
+CREATE POLICY "product_images_select_public" ON public.product_images FOR SELECT TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "product_images_admin_mutation" ON public.product_images;
+CREATE POLICY "product_images_admin_mutation" ON public.product_images FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+-- =========================================================================
 -- GUÍA OBLIGATORIA EN SUPABASE DASHBOARD:
 -- 1. Ve a: Authentication -> Providers -> Email
 -- 2. Desmarca: "Allow new users to sign up"
