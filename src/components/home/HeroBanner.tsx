@@ -10,18 +10,18 @@ interface HeroBannerProps {
 }
 
 export function HeroBanner({ onSelectCategory: _onSelectCategory }: HeroBannerProps) {
-  const [trends, setTrends] = useState<AdBanner[]>(INITIAL_TRENDS);
+  const [trends, setTrends] = useState<AdBanner[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Helper para purgar imágenes obsoletas de carteras
+  // Solo permitir imágenes reales cargadas en el sistema (excluir URLs de prueba de Unsplash)
   const sanitizeBanners = (items: AdBanner[]) =>
     items.filter(
       (item) =>
         item.active !== false &&
-        !item.img?.includes('photo-1544816155-12df9643f363') &&
-        !item.img?.includes('photo-1555529669-e69e7aa0ba9a')
+        Boolean(item.img) &&
+        !item.img.includes('images.unsplash.com')
     );
 
   const loadTrendsData = async () => {
@@ -70,9 +70,11 @@ export function HeroBanner({ onSelectCategory: _onSelectCategory }: HeroBannerPr
   useEffect(() => {
     if (isPaused || trends.length <= 1) return;
     timerRef.current = setInterval(() => {
-      setCurrentSlide(prev => (prev + 1) % trends.length);
+      setCurrentSlide((prev) => (prev + 1) % trends.length);
     }, 5000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, [isPaused, trends.length]);
 
   useEffect(() => {
@@ -98,30 +100,77 @@ export function HeroBanner({ onSelectCategory: _onSelectCategory }: HeroBannerPr
               Compro tus encargos en tiendas oficiales de USA. Precios garantizados en soles con fecha de entrega clara en Lima.
             </p>
             <div className="animate-fade-up stagger-4 flex flex-wrap items-center gap-3 pt-2">
-              <a href="#catalogo" className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-6 sm:px-8 py-3.5 rounded-2xl text-xs sm:text-sm shadow-lg shadow-amber-500/25 inline-flex items-center gap-2 active:scale-[0.97]">
+              <a
+                href="#catalogo"
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-6 sm:px-8 py-3.5 rounded-2xl text-xs sm:text-sm shadow-lg shadow-amber-500/25 inline-flex items-center gap-2 active:scale-[0.97]"
+              >
                 <span>Explorar catálogo del viaje</span>
                 <span className="material-symbols-outlined text-base">arrow_downward</span>
               </a>
-              <a href="#pedir-link" className="bg-slate-900/90 hover:bg-slate-800 text-white border border-slate-700/80 font-bold px-6 sm:px-7 py-3.5 rounded-2xl text-xs sm:text-sm inline-flex items-center gap-2 active:scale-[0.97]">
+              <a
+                href="#pedir-link"
+                className="bg-slate-900/90 hover:bg-slate-800 text-white border border-slate-700/80 font-bold px-6 sm:px-7 py-3.5 rounded-2xl text-xs sm:text-sm inline-flex items-center gap-2 active:scale-[0.97]"
+              >
                 <span className="material-symbols-outlined text-base text-amber-400">link</span>
                 <span>Pedir por link</span>
               </a>
             </div>
             <div className="animate-fade-up stagger-5 pt-2 flex flex-wrap items-center gap-3 text-[11px] text-slate-400 font-semibold">
-              <span className="flex items-center gap-1"><span className="material-symbols-outlined text-xs text-amber-400">shield_lock</span>Garantía de compra oficial</span>
-              <span className="flex items-center gap-1"><span className="material-symbols-outlined text-xs text-blue-400">local_shipping</span>Entrega en Lima y todo Perú</span>
+              <span className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs text-amber-400">shield_lock</span>
+                Garantía de compra oficial
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs text-blue-400">local_shipping</span>
+                Entrega en Lima y todo Perú
+              </span>
             </div>
           </div>
 
-          <div className="lg:col-span-5 card-3d" onMouseEnter={() => setIsPaused(true)} onMouseLeave={() => setIsPaused(false)}>
+          <div
+            className="lg:col-span-5 card-3d"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+          >
             <div className="relative rounded-3xl overflow-hidden border border-slate-800/90 shadow-2xl bg-slate-900 aspect-[4/5] sm:aspect-[5/4] lg:aspect-[4/5]">
-              {trends.map((slide, idx) => (
-                <div key={slide.id || idx} className="absolute inset-0" aria-hidden={idx !== currentSlide} style={{opacity: idx === currentSlide ? 1 : 0, transition: 'opacity 700ms cubic-bezier(0.23,1,0.32,1)', zIndex: idx === currentSlide ? 1 : 0}}>
-                  {/* Imagen completa del carrusel: sin badge, texto, CTA, contador ni flechas. */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={slide.img} alt={slide.title || `Imagen ${idx + 1}`} className="w-full h-full object-contain object-center bg-slate-900" loading={idx === 0 ? 'eager' : 'lazy'} decoding="async" />
+              {trends.length > 0 ? (
+                trends.map((slide, idx) => (
+                  <div
+                    key={slide.id || idx}
+                    className="absolute inset-0"
+                    aria-hidden={idx !== currentSlide}
+                    style={{
+                      opacity: idx === currentSlide ? 1 : 0,
+                      transition: 'opacity 700ms cubic-bezier(0.23,1,0.32,1)',
+                      zIndex: idx === currentSlide ? 1 : 0,
+                    }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={slide.img}
+                      alt={slide.title || `Banner ${idx + 1}`}
+                      className="w-full h-full object-contain object-center bg-slate-900"
+                      loading={idx === 0 ? 'eager' : 'lazy'}
+                      decoding="async"
+                    />
+                  </div>
+                ))
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center p-6 sm:p-8 bg-gradient-to-b from-slate-900 to-slate-950 text-center">
+                  <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl overflow-hidden border-2 border-amber-500/40 shadow-2xl mb-4 bg-slate-900 flex items-center justify-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/Storebass.jpg" alt="STORE BASS" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 text-amber-400 text-xs font-black uppercase tracking-wider mb-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    <span>Personal Shopper Oficial</span>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-white font-display">Compras en USA ➔ Lima, Perú</h3>
+                  <p className="text-xs text-slate-400 max-w-xs mt-1.5 leading-relaxed">
+                    Comprado directamente en tiendas oficiales de USA con boleta física y entrega garantizada.
+                  </p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>

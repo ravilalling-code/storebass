@@ -5,63 +5,7 @@ import { AdBanner } from '@/lib/types';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { WhatsAppIcon } from '@/components/ui/WhatsAppIcon';
 
-export const INITIAL_TRENDS: AdBanner[] = [
-  {
-    id: 1,
-    title: 'iPhone 16 Pro Max & Gadgets Apple',
-    subtitle: 'Novedades recién lanzadas en tiendas Apple de Florida. 100% original con boleta física y garantía oficial Apple.',
-    tag: 'Lanzamiento Oficial Apple',
-    btn_text: 'Ver en catálogo',
-    link: '#catalogo',
-    img: 'https://images.unsplash.com/photo-1695048133142-1a20484d2569?auto=format&fit=crop&w=1000&q=80',
-    active: true,
-    display_order: 1,
-  },
-  {
-    id: 2,
-    title: 'Perfumes de Lujo: Dior Sauvage & Fragancias Árabes',
-    subtitle: 'Fragancias exclusivas de tiendas autorizadas de USA y perfumes virales traídos en mi regreso.',
-    tag: '100% Original Garantizado',
-    btn_text: 'Ver en catálogo',
-    link: '#catalogo',
-    img: 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&w=1000&q=80',
-    active: true,
-    display_order: 2,
-  },
-  {
-    id: 3,
-    title: 'Sephora: Sol de Janeiro & Rare Beauty',
-    subtitle: 'Los perfumes y sérums virales que no llegan a Perú. Precio final cerrado en soles sin sorpresas de aduanas.',
-    tag: 'Belleza & Skincare USA',
-    btn_text: 'Pedir por WhatsApp',
-    link: 'https://wa.me/51960759244?text=Hola%20Johan,%20quiero%20cotizar%20productos%20virales%20de%20Sephora%20USA',
-    img: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1000&q=80',
-    active: true,
-    display_order: 3,
-  },
-  {
-    id: 4,
-    title: 'Sneakers Exclusivos: Nike Dunk & New Balance',
-    subtitle: 'Colorways limitados del mercado norteamericano comprados en Foot Locker y Kith Miami.',
-    tag: 'Edición Limitada',
-    btn_text: 'Ver zapatillas',
-    link: '#catalogo',
-    img: 'https://images.unsplash.com/photo-1552346154-21d32810aba3?auto=format&fit=crop&w=1000&q=80',
-    active: true,
-    display_order: 4,
-  },
-  {
-    id: 5,
-    title: 'Moda & Streetwear USA: Tommy, Ralph Lauren & Essentials',
-    subtitle: 'Ropa original de marca con descuentos exclusivos de tiendas oficiales y outlets de Miami.',
-    tag: 'Moda Original USA',
-    btn_text: 'Pedir encargo',
-    link: '#pedir-link',
-    img: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=1000&q=80',
-    active: true,
-    display_order: 5,
-  },
-];
+export const INITIAL_TRENDS: AdBanner[] = [];
 
 export function TrendsCarousel() {
   const [trends, setTrends] = useState<AdBanner[]>(INITIAL_TRENDS);
@@ -69,13 +13,13 @@ export function TrendsCarousel() {
   const [isPaused, setIsPaused] = useState(false);
   const carouselTrackRef = useRef<HTMLDivElement>(null);
 
-  // Helper para purgar imágenes obsoletas de carteras
+  // Solo permitir imágenes reales cargadas por el usuario/sistema (excluir URLs de prueba de Unsplash)
   const sanitizeBanners = (items: AdBanner[]) =>
     items.filter(
       (item) =>
         item.active !== false &&
-        !item.img?.includes('photo-1544816155-12df9643f363') &&
-        !item.img?.includes('photo-1555529669-e69e7aa0ba9a')
+        Boolean(item.img) &&
+        !item.img.includes('images.unsplash.com')
     );
 
   // Carga de tendencias desde Supabase con fallback a localStorage
