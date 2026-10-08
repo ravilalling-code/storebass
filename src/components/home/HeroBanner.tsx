@@ -15,14 +15,23 @@ export function HeroBanner({ onSelectCategory: _onSelectCategory }: HeroBannerPr
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Helper para purgar imágenes obsoletas de carteras
+  const sanitizeBanners = (items: AdBanner[]) =>
+    items.filter(
+      (item) =>
+        item.active !== false &&
+        !item.img?.includes('photo-1544816155-12df9643f363') &&
+        !item.img?.includes('photo-1555529669-e69e7aa0ba9a')
+    );
+
   const loadTrendsData = async () => {
     try {
       const stored = localStorage.getItem('storebass_ads');
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const activeOnly = parsed.filter((item: AdBanner) => item.active !== false);
-          if (activeOnly.length > 0) setTrends(activeOnly);
+          const sanitized = sanitizeBanners(parsed);
+          if (sanitized.length > 0) setTrends(sanitized);
         }
       }
 
@@ -36,8 +45,11 @@ export function HeroBanner({ onSelectCategory: _onSelectCategory }: HeroBannerPr
         .order('created_at', { ascending: false });
 
       if (!error && data && data.length > 0) {
-        setTrends(data);
-        localStorage.setItem('storebass_ads', JSON.stringify(data));
+        const cleanData = sanitizeBanners(data);
+        if (cleanData.length > 0) {
+          setTrends(cleanData);
+          localStorage.setItem('storebass_ads', JSON.stringify(cleanData));
+        }
       }
     } catch (err) {
       console.warn('[HeroBanner] Error al cargar tendencias desde Supabase:', err);
