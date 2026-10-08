@@ -846,11 +846,21 @@ export default function AdminPage() {
                     <span>Pedidos sincronizados en tiempo real</span>
                   </div>
                 </div>
+
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Productos en Catálogo
+                    </span>
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
+                      <span className="material-symbols-outlined">inventory_2</span>
+                    </div>
+                  </div>
                   <div className="text-2xl font-black text-white">
-                    {shippingGuides.length} Guías
+                    {products.length} Artículos
                   </div>
                   <div className="text-xs text-blue-300 font-bold mt-2 flex items-center gap-1">
-                    <span>✈️ Miami Hub ➔ Lima Callao</span>
+                    <span>📦 Catálogo sincronizado en tiempo real</span>
                   </div>
                 </div>
 
