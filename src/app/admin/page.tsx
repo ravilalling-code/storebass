@@ -778,6 +778,15 @@ export default function AdminPage() {
           </div>
 
           <Link
+            href="/mobile"
+            target="_blank"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-blue-600/20 border border-blue-500/40 hover:bg-blue-600/30 text-xs font-bold text-blue-300 transition-colors"
+          >
+            <span className="material-symbols-outlined text-base text-blue-400">smartphone</span>
+            <span>Abrir App Móvil (PWA)</span>
+          </Link>
+
+          <Link
             href="/"
             target="_blank"
             className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 transition-colors"

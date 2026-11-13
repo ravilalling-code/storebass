@@ -38,6 +38,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             } catch(e) {}
           })();
         ` }} />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#0b1b3d" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" />
       </head>
       <body className={`${plusJakartaSans.variable} font-sans bg-slate-50 dark:bg-darkBg text-slate-800 dark:text-slate-100 antialiased min-h-screen selection:bg-amber-500 selection:text-slate-950 transition-colors duration-200`}>

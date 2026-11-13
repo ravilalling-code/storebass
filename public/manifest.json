@@ -1,0 +1,22 @@
+{
+  "name": "STORE BASS — Monitor de Pedidos",
+  "short_name": "StoreBass Monitor",
+  "description": "App móvil para control y seguimiento de pedidos, compras en USA y ganancias",
+  "start_url": "/mobile",
+  "display": "standalone",
+  "background_color": "#0b1b3d",
+  "theme_color": "#0b1b3d",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/Storebass.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "/Storebass.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
