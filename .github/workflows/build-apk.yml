@@ -21,9 +21,16 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Build APK with Gradle
-        env:
-          ANDROID_HOME: /usr/local/lib/android/sdk
+      - name: Setup Gradle 8.5
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.5'
+
+      - name: Accept Android Licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+      - name: Build APK with Gradle 8.5
         run: |
           cd apk-android
           gradle assembleDebug --stacktrace
@@ -31,9 +38,9 @@ jobs:
       - name: Prepare APK File
         run: |
           mkdir -p dist-apk
-          find apk-android -name "*.apk" -exec cp {} dist-apk/storebass-monitor.apk \;
-          echo "APK file ready:"
-          ls -lh dist-apk/storebass-monitor.apk
+          find apk-android/app/build/outputs/apk -name "*.apk" -exec cp {} dist-apk/storebass-monitor.apk \;
+          echo "APK generated:"
+          ls -lh dist-apk/
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
