@@ -212,13 +212,17 @@ export function OrderMonitor({
   // Escáner de Código de Barras
   const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
   const [scannerTargetField, setScannerTargetField] = useState<'new' | 'edit'>('new');
+  const [manualBarcodeInput, setManualBarcodeInput] = useState('');
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scannerStreamRef = useRef<MediaStream | null>(null);
+  const html5QrCodeRef = useRef<any>(null);
   const [scannerStatus, setScannerStatus] = useState('Iniciando cámara...');
 
-  // Referencias para fotos
+  // Referencias para fotos (Cámara y Galería)
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const editFileInputRef = useRef<HTMLInputElement | null>(null);
+  const editGalleryInputRef = useRef<HTMLInputElement | null>(null);
 
   // Mapear tickets de Supabase a la estructura de CustomerOrderGroup
   const processedCustomers = useMemo<CustomerOrderGroup[]>(() => {
@@ -699,77 +703,58 @@ export function OrderMonitor({
     reader.readAsDataURL(file);
   };
 
-  // 7. ESCÁNER DE CÓDIGO DE BARRAS EN TIEMPO REAL
-  const startBarcodeScanner = async (target: 'new' | 'edit') => {
+  // 7. ESCÁNER DE CÓDIGO DE BARRAS EN TIEMPO REAL CON HTML5-QRCODE
+  const handleBarcodeSuccess = (code: string) => {
+    stopBarcodeScanner();
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate([80, 40, 80]);
+    }
+
+    if (scannerTargetField === 'new') {
+      setNewOrderForm((prev) => ({
+        ...prev,
+        barcode: code,
+        observation: prev.observation
+          ? `${prev.observation} · Cod: ${code}`
+          : `Cod: ${code}`,
+      }));
+    } else if (editingProduct) {
+      setEditingProduct((prev) =>
+        prev
+          ? {
+              ...prev,
+              item: {
+                ...prev.item,
+                barcode: code,
+                observation: prev.item.observation
+                  ? `${prev.item.observation} · Cod: ${code}`
+                  : `Cod: ${code}`,
+              },
+            }
+          : null
+      );
+    }
+    showToast('¡Código detectado con éxito!', code);
+  };
+
+  const startBarcodeScanner = (target: 'new' | 'edit') => {
     setScannerTargetField(target);
+    setManualBarcodeInput('');
     setIsBarcodeScannerOpen(true);
     setScannerStatus('Iniciando cámara...');
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-      });
-      scannerStreamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-        setScannerStatus('Apunta el código de barras al marco rojo');
-
-        if ('BarcodeDetector' in window) {
-          const detector = new (window as any).BarcodeDetector({
-            formats: ['ean_13', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'],
-          });
-
-          const scanInterval = setInterval(async () => {
-            if (!videoRef.current || videoRef.current.readyState < 2) return;
-            try {
-              const barcodes = await detector.detect(videoRef.current);
-              if (barcodes.length > 0) {
-                const code = barcodes[0].rawValue;
-                clearInterval(scanInterval);
-                stopBarcodeScanner();
-
-                if (target === 'new') {
-                  setNewOrderForm((prev) => ({
-                    ...prev,
-                    barcode: code,
-                    observation: prev.observation
-                      ? `${prev.observation} · Cod: ${code}`
-                      : `Cod: ${code}`,
-                  }));
-                } else if (editingProduct) {
-                  setEditingProduct((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          item: {
-                            ...prev.item,
-                            barcode: code,
-                            observation: prev.item.observation
-                              ? `${prev.item.observation} · Cod: ${code}`
-                              : `Cod: ${code}`,
-                          },
-                        }
-                      : null
-                  );
-                }
-                showToast('¡Código detectado!', code);
-              }
-            } catch {
-              // continue scanning
-            }
-          }, 300);
-        } else {
-          setScannerStatus('Tu navegador no soporta detección automática. Ingrésalo manualmente.');
-        }
-      }
-    } catch {
-      setScannerStatus('No se pudo acceder a la cámara. Revisa permisos.');
-    }
   };
 
   const stopBarcodeScanner = () => {
+    if (html5QrCodeRef.current) {
+      try {
+        html5QrCodeRef.current.stop().catch(() => {}).then(() => {
+          try {
+            html5QrCodeRef.current?.clear();
+          } catch {}
+          html5QrCodeRef.current = null;
+        });
+      } catch {}
+    }
     if (scannerStreamRef.current) {
       scannerStreamRef.current.getTracks().forEach((t) => t.stop());
       scannerStreamRef.current = null;
@@ -778,12 +763,58 @@ export function OrderMonitor({
   };
 
   useEffect(() => {
+    if (!isBarcodeScannerOpen) return;
+
+    let isMounted = true;
+
+    const timer = setTimeout(async () => {
+      try {
+        const { Html5Qrcode } = await import('html5-qrcode');
+        if (!isMounted) return;
+
+        const html5QrCode = new Html5Qrcode('barcode-scanner-viewport-desktop');
+        html5QrCodeRef.current = html5QrCode;
+
+        await html5QrCode.start(
+          { facingMode: 'environment' },
+          {
+            fps: 15,
+            qrbox: { width: 280, height: 160 },
+          },
+          (decodedText: string) => {
+            if (isMounted) {
+              handleBarcodeSuccess(decodedText);
+            }
+          },
+          () => {}
+        );
+
+        if (isMounted) {
+          setScannerStatus('Apunta la cámara al código de barras o QR');
+        }
+      } catch (err: any) {
+        console.error('Error al iniciar escáner:', err);
+        if (isMounted) {
+          setScannerStatus(
+            'No se pudo abrir la cámara. Verifica que diste permisos de Cámara en el navegador o escribe el código manualmente abajo.'
+          );
+        }
+      }
+    }, 250);
+
     return () => {
-      if (scannerStreamRef.current) {
-        scannerStreamRef.current.getTracks().forEach((t) => t.stop());
+      isMounted = false;
+      clearTimeout(timer);
+      if (html5QrCodeRef.current) {
+        html5QrCodeRef.current.stop().catch(() => {}).then(() => {
+          try {
+            html5QrCodeRef.current?.clear();
+          } catch {}
+          html5QrCodeRef.current = null;
+        });
       }
     };
-  }, []);
+  }, [isBarcodeScannerOpen]);
 
   // Guardar observación rápida
   const handleSaveObservation = async () => {
@@ -923,7 +954,7 @@ export function OrderMonitor({
 
   return (
     <div className="space-y-6">
-      {/* 1. INPUTS OCULTOS DE CÁMARA */}
+      {/* 1. INPUTS OCULTOS DE FOTOS (CÁMARA Y GALERÍA) */}
       <input
         type="file"
         ref={fileInputRef}
@@ -934,9 +965,23 @@ export function OrderMonitor({
       />
       <input
         type="file"
+        ref={galleryInputRef}
+        accept="image/*"
+        onChange={(e) => handlePhotoCapture(e, 'new')}
+        className="hidden"
+      />
+      <input
+        type="file"
         ref={editFileInputRef}
         accept="image/*"
         capture="environment"
+        onChange={(e) => handlePhotoCapture(e, 'edit')}
+        className="hidden"
+      />
+      <input
+        type="file"
+        ref={editGalleryInputRef}
+        accept="image/*"
         onChange={(e) => handlePhotoCapture(e, 'edit')}
         className="hidden"
       />
@@ -2057,21 +2102,42 @@ export function OrderMonitor({
               </button>
             </div>
 
-            <div className="relative w-full aspect-square bg-black rounded-2xl overflow-hidden border border-slate-700">
-              <video
-                ref={videoRef}
-                playsInline
-                muted
-                className="w-full h-full object-cover"
+            <div className="relative w-full aspect-square bg-black rounded-2xl overflow-hidden border border-slate-700 flex items-center justify-center">
+              <div
+                id="barcode-scanner-viewport-desktop"
+                className="w-full h-full flex items-center justify-center"
               />
-              <div className="absolute inset-x-8 top-1/2 -translate-y-1/2 h-28 border-2 border-dashed border-red-500 rounded-xl pointer-events-none flex items-center justify-center">
-                <span className="text-[10px] text-red-300 bg-red-950/80 px-2 py-0.5 rounded">
-                  Centra el código aquí
-                </span>
-              </div>
             </div>
 
             <p className="text-xs text-slate-300 font-mono">{scannerStatus}</p>
+
+            {/* Alternativa: Ingreso manual directo */}
+            <div className="space-y-1.5 pt-1 border-t border-slate-800 text-left">
+              <label className="text-[10px] font-bold text-slate-400 block">
+                O escribe el código de barras manualmente:
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Ej. 195949112233"
+                  value={manualBarcodeInput}
+                  onChange={(e) => setManualBarcodeInput(e.target.value)}
+                  className="flex-1 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs font-mono focus:outline-none focus:border-amber-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (manualBarcodeInput.trim()) {
+                      handleBarcodeSuccess(manualBarcodeInput.trim());
+                      setManualBarcodeInput('');
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black text-xs rounded-xl transition-all"
+                >
+                  Listo
+                </button>
+              </div>
+            </div>
 
             <button
               onClick={stopBarcodeScanner}

@@ -90,13 +90,24 @@ export default function MobileMonitorPage() {
   // Escáner de Código de Barras
   const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
   const [scannerTargetField, setScannerTargetField] = useState<'new' | 'edit'>('new');
+  const [manualBarcodeInput, setManualBarcodeInput] = useState('');
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scannerStreamRef = useRef<MediaStream | null>(null);
+  const html5QrCodeRef = useRef<any>(null);
   const [scannerStatus, setScannerStatus] = useState('Iniciando cámara...');
 
-  // Referencia para input de foto nativa
+  // Referencias para foto (Cámara nativa y Galería)
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const editFileInputRef = useRef<HTMLInputElement | null>(null);
+  const editGalleryInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Modal para edición rápida de observación de cada producto
+  const [editingObs, setEditingObs] = useState<{
+    ticketId: string;
+    itemId: string;
+    currentText: string;
+  } | null>(null);
 
   // Detectar iOS en Safari
   useEffect(() => {
@@ -596,88 +607,156 @@ export default function MobileMonitorPage() {
     reader.readAsDataURL(file);
   };
 
-  // 7. ESCÁNER DE CÓDIGO DE BARRAS EN TIEMPO REAL
-  const startBarcodeScanner = async (target: 'new' | 'edit') => {
+  // 7. ESCÁNER DE CÓDIGO DE BARRAS EN TIEMPO REAL CON HTML5-QRCODE
+  const handleBarcodeSuccess = (code: string) => {
+    stopBarcodeScanner();
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate([80, 40, 80]);
+    }
+
+    if (scannerTargetField === 'new') {
+      setOrderForm((prev) => ({
+        ...prev,
+        barcode: code,
+        observation: prev.observation
+          ? `${prev.observation} · Cod: ${code}`
+          : `Cod: ${code}`,
+      }));
+    } else if (editingProduct) {
+      setEditingProduct((prev) =>
+        prev
+          ? {
+              ...prev,
+              item: {
+                ...prev.item,
+                barcode: code,
+                observation: prev.item.observation
+                  ? `${prev.item.observation} · Cod: ${code}`
+                  : `Cod: ${code}`,
+              },
+            }
+          : null
+      );
+    }
+    showToast('¡Código detectado!', code);
+  };
+
+  const startBarcodeScanner = (target: 'new' | 'edit') => {
     setScannerTargetField(target);
+    setManualBarcodeInput('');
     setIsBarcodeScannerOpen(true);
     setScannerStatus('Iniciando cámara trasera...');
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-      });
-      scannerStreamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-        setScannerStatus('Apunta el código de barras al marco rojo');
-
-        // Verificar soporte de BarcodeDetector
-        if ('BarcodeDetector' in window) {
-          const detector = new (window as any).BarcodeDetector({
-            formats: ['ean_13', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'],
-          });
-
-          const scanInterval = setInterval(async () => {
-            if (!videoRef.current || videoRef.current.readyState < 2) return;
-            try {
-              const barcodes = await detector.detect(videoRef.current);
-              if (barcodes.length > 0) {
-                const code = barcodes[0].rawValue;
-                clearInterval(scanInterval);
-                stopBarcodeScanner();
-
-                if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-                  navigator.vibrate([80, 40, 80]);
-                }
-
-                if (target === 'new') {
-                  setOrderForm((prev) => ({
-                    ...prev,
-                    barcode: code,
-                    observation: prev.observation
-                      ? `${prev.observation} · Cod: ${code}`
-                      : `Cod: ${code}`,
-                  }));
-                } else if (editingProduct) {
-                  setEditingProduct((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          item: {
-                            ...prev.item,
-                            barcode: code,
-                            observation: prev.item.observation
-                              ? `${prev.item.observation} · Cod: ${code}`
-                              : `Cod: ${code}`,
-                          },
-                        }
-                      : null
-                  );
-                }
-                showToast('¡Código detectado!', code);
-              }
-            } catch (err) {
-              // detección continua
-            }
-          }, 250);
-        } else {
-          setScannerStatus('Cámara lista. Si no detecta automáticamente, puedes escribir el código abajo.');
-        }
-      }
-    } catch (err) {
-      console.error(err);
-      setScannerStatus('No se pudo acceder a la cámara. Revisa los permisos en tu navegador.');
-    }
   };
 
   const stopBarcodeScanner = () => {
+    if (html5QrCodeRef.current) {
+      try {
+        html5QrCodeRef.current.stop().catch(() => {}).then(() => {
+          try {
+            html5QrCodeRef.current?.clear();
+          } catch {}
+          html5QrCodeRef.current = null;
+        });
+      } catch {}
+    }
     if (scannerStreamRef.current) {
       scannerStreamRef.current.getTracks().forEach((track) => track.stop());
       scannerStreamRef.current = null;
     }
     setIsBarcodeScannerOpen(false);
+  };
+
+  // Montar Html5Qrcode automáticamente al abrir el visor
+  useEffect(() => {
+    if (!isBarcodeScannerOpen) return;
+
+    let isMounted = true;
+
+    const timer = setTimeout(async () => {
+      try {
+        const { Html5Qrcode } = await import('html5-qrcode');
+        if (!isMounted) return;
+
+        const html5QrCode = new Html5Qrcode('barcode-scanner-viewport');
+        html5QrCodeRef.current = html5QrCode;
+
+        await html5QrCode.start(
+          { facingMode: 'environment' },
+          {
+            fps: 15,
+            qrbox: { width: 280, height: 160 },
+          },
+          (decodedText: string) => {
+            if (isMounted) {
+              handleBarcodeSuccess(decodedText);
+            }
+          },
+          () => {}
+        );
+
+        if (isMounted) {
+          setScannerStatus('Apunta la cámara al código de barras o QR');
+        }
+      } catch (err: any) {
+        console.error('Error al iniciar escáner:', err);
+        if (isMounted) {
+          setScannerStatus(
+            'No se pudo abrir la cámara. Asegúrate de conceder permisos de Cámara en la App o escribe el código manualmente abajo.'
+          );
+        }
+      }
+    }, 250);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+      if (html5QrCodeRef.current) {
+        html5QrCodeRef.current.stop().catch(() => {}).then(() => {
+          try {
+            html5QrCodeRef.current?.clear();
+          } catch {}
+          html5QrCodeRef.current = null;
+        });
+      }
+    };
+  }, [isBarcodeScannerOpen]);
+
+  // 8. GUARDAR OBSERVACIÓN RÁPIDA DE CADA PRODUCTO
+  const handleSaveObservation = async () => {
+    if (!editingObs) return;
+    const { ticketId, itemId, currentText } = editingObs;
+    const target = tickets.find((t) => t.id === ticketId);
+    if (!target) return;
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
+
+    const updatedItems = (target.items || []).map((it: any) => {
+      if (it.id === itemId || it.title === itemId || it.name === itemId) {
+        return {
+          ...it,
+          observacion: currentText.trim(),
+          observation: currentText.trim(),
+        };
+      }
+      return it;
+    });
+
+    try {
+      const { error } = await supabase
+        .from('tickets')
+        .update({
+          items: updatedItems,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', ticketId);
+
+      if (error) throw error;
+      showToast('Observación guardada', currentText.trim());
+      setEditingObs(null);
+      fetchTickets();
+    } catch {
+      showToast('Error', 'No se pudo guardar la observación.');
+    }
   };
 
   // 8. REGISTRAR NUEVO PEDIDO MANUAL
@@ -1350,28 +1429,60 @@ export default function MobileMonitorPage() {
                             </div>
                           </div>
 
-                          {/* Observación y Checkbox "¿Comprado?" */}
-                          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
-                            <span className="text-[11px] text-slate-600 truncate max-w-[150px]">
-                              {it.observation || it.subtitle || 'Sin especificaciones'}
-                            </span>
+                          {/* Bloque Destacado de Observación de Cada Producto */}
+                          <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-col gap-2">
+                            <div className="flex items-start justify-between gap-2 bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5">
+                              <div className="flex items-start gap-1.5 min-w-0">
+                                <span className="material-symbols-outlined text-sm text-amber-600 shrink-0 mt-0.5">
+                                  sticky_note_2
+                                </span>
+                                <div className="text-xs">
+                                  <span className="font-bold text-amber-950">Observación: </span>
+                                  <span className="text-slate-800 font-medium break-words">
+                                    {it.observation || it.subtitle || 'Sin especificaciones (Toca para agregar)'}
+                                  </span>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() =>
+                                  setEditingObs({
+                                    ticketId: cust.ticketId,
+                                    itemId: it.id,
+                                    currentText: it.observation || it.subtitle || '',
+                                  })
+                                }
+                                className="p-1 text-slate-400 hover:text-blue-600 rounded shrink-0 bg-white border border-slate-200 shadow-2xs"
+                                title="Editar observación"
+                              >
+                                <span className="material-symbols-outlined text-sm">edit_note</span>
+                              </button>
+                            </div>
 
-                            {/* Botón "¿Comprado?" con feedback háptico */}
-                            <button
-                              onClick={() =>
-                                handleTogglePurchased(cust.ticketId, it.id, it.is_purchased)
-                              }
-                              className={`px-3 py-1.5 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer ${
-                                it.is_purchased
-                                  ? 'bg-emerald-600 text-white shadow-xs'
-                                  : 'bg-amber-100 text-amber-900 border border-amber-300'
-                              }`}
-                            >
-                              <span className="material-symbols-outlined text-sm font-bold">
-                                {it.is_purchased ? 'check' : 'pending'}
-                              </span>
-                              <span>{it.is_purchased ? 'Comprado' : 'Pendiente'}</span>
-                            </button>
+                            <div className="flex items-center justify-between gap-2">
+                              {it.barcode ? (
+                                <span className="text-[10px] font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-xs">qr_code</span>
+                                  <span>{it.barcode}</span>
+                                </span>
+                              ) : <span />}
+
+                              {/* Botón "¿Comprado?" con feedback háptico */}
+                              <button
+                                onClick={() =>
+                                  handleTogglePurchased(cust.ticketId, it.id, it.is_purchased)
+                                }
+                                className={`px-3 py-1.5 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer ${
+                                  it.is_purchased
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : 'bg-amber-100 text-amber-900 border border-amber-300'
+                                }`}
+                              >
+                                <span className="material-symbols-outlined text-sm font-bold">
+                                  {it.is_purchased ? 'check' : 'pending'}
+                                </span>
+                                <span>{it.is_purchased ? 'Comprado' : 'Pendiente'}</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -1563,8 +1674,8 @@ export default function MobileMonitorPage() {
             </div>
 
             <form onSubmit={handleCreateOrder} className="space-y-3.5 text-xs">
-              {/* Botones de Captura Rápida: Foto con Cámara y Escáner */}
-              <div className="grid grid-cols-2 gap-2 p-2 bg-slate-50 border border-slate-200 rounded-2xl">
+              {/* Botones de Captura Rápida: Foto Cámara, Galería y Escáner */}
+              <div className="grid grid-cols-3 gap-2 p-2 bg-slate-50 border border-slate-200 rounded-2xl">
                 {/* Input invisible para foto con cámara */}
                 <input
                   type="file"
@@ -1574,26 +1685,45 @@ export default function MobileMonitorPage() {
                   onChange={(e) => handlePhotoCapture(e, 'new')}
                   className="hidden"
                 />
+                {/* Input invisible para galería de fotos */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={galleryInputRef}
+                  onChange={(e) => handlePhotoCapture(e, 'new')}
+                  className="hidden"
+                />
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="py-2.5 px-3 rounded-xl bg-white border border-slate-200 hover:border-blue-400 font-bold text-slate-800 flex items-center justify-center gap-1.5 shadow-xs active:scale-95 transition-all"
+                  className="py-2.5 px-2 rounded-xl bg-white border border-slate-200 hover:border-blue-400 font-bold text-slate-800 flex flex-col items-center justify-center gap-1 shadow-2xs active:scale-95 transition-all"
                 >
                   <span className="material-symbols-outlined text-blue-600 text-lg">
                     photo_camera
                   </span>
-                  <span>Tomar Foto</span>
+                  <span className="text-[11px]">Tomar Foto</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => galleryInputRef.current?.click()}
+                  className="py-2.5 px-2 rounded-xl bg-white border border-slate-200 hover:border-blue-400 font-bold text-slate-800 flex flex-col items-center justify-center gap-1 shadow-2xs active:scale-95 transition-all"
+                >
+                  <span className="material-symbols-outlined text-slate-600 text-lg">
+                    image
+                  </span>
+                  <span className="text-[11px]">Galería</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => startBarcodeScanner('new')}
-                  className="py-2.5 px-3 rounded-xl bg-white border border-slate-200 hover:border-amber-400 font-bold text-slate-800 flex items-center justify-center gap-1.5 shadow-xs active:scale-95 transition-all"
+                  className="py-2.5 px-2 rounded-xl bg-white border border-slate-200 hover:border-amber-400 font-bold text-slate-800 flex flex-col items-center justify-center gap-1 shadow-2xs active:scale-95 transition-all"
                 >
                   <span className="material-symbols-outlined text-amber-600 text-lg">
                     barcode_scanner
                   </span>
-                  <span>Escanear Código</span>
+                  <span className="text-[11px]">Escanear</span>
                 </button>
               </div>
 
@@ -1858,7 +1988,7 @@ export default function MobileMonitorPage() {
 
             <form onSubmit={handleSaveEditProduct} className="space-y-3 text-xs">
               {/* Opciones de Foto y Código de Barras */}
-              <div className="flex items-center gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <input
                   type="file"
                   accept="image/*"
@@ -1867,26 +1997,44 @@ export default function MobileMonitorPage() {
                   onChange={(e) => handlePhotoCapture(e, 'edit')}
                   className="hidden"
                 />
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={editGalleryInputRef}
+                  onChange={(e) => handlePhotoCapture(e, 'edit')}
+                  className="hidden"
+                />
                 <button
                   type="button"
                   onClick={() => editFileInputRef.current?.click()}
-                  className="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 flex items-center justify-center gap-1.5"
+                  className="py-2 rounded-xl bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 flex flex-col items-center justify-center gap-1"
                 >
                   <span className="material-symbols-outlined text-blue-600 text-base">
                     photo_camera
                   </span>
-                  <span>Tomar Nueva Foto</span>
+                  <span className="text-[10px]">Cámara</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => editGalleryInputRef.current?.click()}
+                  className="py-2 rounded-xl bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 flex flex-col items-center justify-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-slate-600 text-base">
+                    image
+                  </span>
+                  <span className="text-[10px]">Galería</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => startBarcodeScanner('edit')}
-                  className="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 flex items-center justify-center gap-1.5"
+                  className="py-2 rounded-xl bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 flex flex-col items-center justify-center gap-1"
                 >
                   <span className="material-symbols-outlined text-amber-600 text-base">
                     barcode_scanner
                   </span>
-                  <span>Escanear Código</span>
+                  <span className="text-[10px]">Escanear</span>
                 </button>
               </div>
 
@@ -2073,9 +2221,9 @@ export default function MobileMonitorPage() {
         </div>
       )}
 
-      {/* 14. VISOR DE ESCÁNER DE CÓDIGO DE BARRAS EN PANTALLA COMPLETA */}
+      {/* 14. VISOR DE ESCÁNER DE CÓDIGO DE BARRAS CON HTML5-QRCODE Y ENTRADA MANUAL */}
       {isBarcodeScannerOpen && (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col justify-between p-4">
+        <div className="fixed inset-0 z-50 bg-slate-950/95 flex flex-col justify-between p-4 backdrop-blur-md">
           <div className="flex items-center justify-between text-white z-10">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-amber-400 text-2xl">
@@ -2085,37 +2233,96 @@ export default function MobileMonitorPage() {
             </div>
             <button
               onClick={stopBarcodeScanner}
-              className="w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center"
+              className="w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30"
             >
               <span className="material-symbols-outlined">close</span>
             </button>
           </div>
 
-          {/* Visor de Cámara con marco animado */}
-          <div className="relative flex-1 my-4 rounded-3xl overflow-hidden bg-black flex items-center justify-center">
-            <video
-              ref={videoRef}
-              playsInline
-              muted
-              className="absolute inset-0 w-full h-full object-cover"
+          {/* Viewport para Html5Qrcode */}
+          <div className="relative flex-1 my-3 rounded-3xl overflow-hidden bg-black flex flex-col items-center justify-center border border-slate-800">
+            <div
+              id="barcode-scanner-viewport"
+              className="w-full h-full min-h-[260px] flex items-center justify-center"
             />
-            {/* Marco de enfoque rojo con animación láser */}
-            <div className="relative w-64 h-48 border-2 border-amber-400 rounded-2xl shadow-2xl flex items-center justify-center pointer-events-none">
-              <div className="absolute top-0 left-0 right-0 h-0.5 bg-rose-500 animate-pulse shadow-lg shadow-rose-500/50"></div>
-              <span className="text-[10px] text-white/70 font-mono bg-black/60 px-2 py-1 rounded-lg">
-                Centra el código de barras
-              </span>
-            </div>
           </div>
 
-          <div className="bg-slate-900/90 text-center p-4 rounded-2xl text-xs text-slate-300 space-y-3 z-10">
-            <p className="font-medium text-amber-300">{scannerStatus}</p>
+          <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-xs text-slate-300 space-y-3 z-10 shadow-2xl">
+            <p className="font-semibold text-center text-amber-300">{scannerStatus}</p>
+
+            {/* Alternativa: Ingreso manual inmediato */}
+            <div className="space-y-1.5 pt-1 border-t border-slate-800">
+              <label className="text-[11px] font-bold text-slate-400 block">
+                O escribe el código de barras manualmente:
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Ej. 195949112233"
+                  value={manualBarcodeInput}
+                  onChange={(e) => setManualBarcodeInput(e.target.value)}
+                  className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs font-mono focus:outline-none focus:border-amber-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (manualBarcodeInput.trim()) {
+                      handleBarcodeSuccess(manualBarcodeInput.trim());
+                      setManualBarcodeInput('');
+                    }
+                  }}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black text-xs rounded-xl transition-all"
+                >
+                  Listo
+                </button>
+              </div>
+            </div>
+
             <button
               onClick={stopBarcodeScanner}
               className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs"
             >
               Cerrar Cámara
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 15. MODAL PARA EDICIÓN RÁPIDA DE OBSERVACIÓN DE CUALQUIER PRODUCTO */}
+      {editingObs && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl w-full max-w-sm p-5 shadow-2xl space-y-3">
+            <h4 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-amber-600 text-lg">sticky_note_2</span>
+              Observación del Producto
+            </h4>
+            <p className="text-[11px] text-slate-500">
+              Especificaciones para la compra en USA (color, talla, modelo, detalles).
+            </p>
+            <textarea
+              rows={3}
+              value={editingObs.currentText}
+              onChange={(e) => setEditingObs({ ...editingObs, currentText: e.target.value })}
+              placeholder="Ej. Color Rosa 40 oz, Talla M, Sellado de tienda USA..."
+              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2 text-xs pt-1">
+              <button
+                type="button"
+                onClick={() => setEditingObs(null)}
+                className="px-3.5 py-2 rounded-xl bg-slate-100 font-bold text-slate-600"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveObservation}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold"
+              >
+                Guardar Observación
+              </button>
+            </div>
           </div>
         </div>
       )}

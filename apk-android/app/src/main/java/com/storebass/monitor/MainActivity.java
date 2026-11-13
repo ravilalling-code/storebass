@@ -1,13 +1,19 @@
 package com.storebass.monitor;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.view.KeyEvent;
 import android.view.View;
+import android.webkit.PermissionRequest;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -17,11 +23,13 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 public class MainActivity extends AppCompatActivity {
@@ -36,7 +44,12 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_APP_URL = "app_url";
     private static final String DEFAULT_URL = "https://storebass-gules.vercel.app/mobile";
 
+    private static final int PERMISSION_REQUEST_CAMERA = 2001;
+    private static final int FILECHOOSER_REQUEST_CODE = 2002;
+
     private SharedPreferences prefs;
+    private PermissionRequest pendingPermissionRequest;
+    private ValueCallback<Uri[]> filePathCallback;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -58,15 +71,24 @@ public class MainActivity extends AppCompatActivity {
         btnRetry.setOnClickListener(v -> loadCurrentUrl());
         btnChangeUrl.setOnClickListener(v -> showChangeUrlDialog());
 
+        swipeRefreshLayout.setColorSchemeResources(R.color.sb_gold, R.color.sb_navy_dark);
+        swipeRefreshLayout.setOnRefreshListener(() -> webView.reload());
+
+        // Solicitar permisos de cámara en el arranque si no han sido otorgados
+        checkAndRequestCameraPermission();
+
         configureWebView();
-
-        swipeRefreshLayout.setColorSchemeResources(R.color.primary_blue, R.color.accent_amber);
-        swipeRefreshLayout.setOnRefreshListener(() -> {
-            webView.reload();
-            swipeRefreshLayout.setRefreshing(false);
-        });
-
         loadCurrentUrl();
+    }
+
+    private void checkAndRequestCameraPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.CAMERA},
+                    PERMISSION_REQUEST_CAMERA
+            );
+        }
     }
 
     private String getAppUrl() {
@@ -102,12 +124,71 @@ public class MainActivity extends AppCompatActivity {
         settings.setSupportZoom(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setMediaPlaybackRequiresUserGesture(false);
 
         // Modern Mobile User Agent
         String defaultUa = settings.getUserAgentString();
         settings.setUserAgentString(defaultUa + " StoreBassAndroid/1.0");
 
-        webView.setWebChromeClient(new WebChromeClient());
+        webView.setWebChromeClient(new WebChromeClient() {
+            // Habilitar acceso a cámara vía WebRTC / getUserMedia para escanear códigos de barras
+            @Override
+            public void onPermissionRequest(final PermissionRequest request) {
+                runOnUiThread(() -> {
+                    for (String resource : request.getResources()) {
+                        if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource)) {
+                            if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA)
+                                    == PackageManager.PERMISSION_GRANTED) {
+                                request.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
+                                return;
+                            } else {
+                                pendingPermissionRequest = request;
+                                ActivityCompat.requestPermissions(
+                                        MainActivity.this,
+                                        new String[]{Manifest.permission.CAMERA},
+                                        PERMISSION_REQUEST_CAMERA
+                                );
+                                return;
+                            }
+                        }
+                    }
+                    request.grant(request.getResources());
+                });
+            }
+
+            // Habilitar selección y captura de fotos desde <input type="file" accept="image/*">
+            @Override
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallbackParam, FileChooserParams fileChooserParams) {
+                if (filePathCallback != null) {
+                    filePathCallback.onReceiveValue(null);
+                }
+                filePathCallback = filePathCallbackParam;
+
+                Intent chooserIntent;
+                try {
+                    Intent contentIntent = new Intent(Intent.ACTION_GET_CONTENT);
+                    contentIntent.addCategory(Intent.CATEGORY_OPENABLE);
+                    contentIntent.setType("image/*");
+
+                    Intent captureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+
+                    chooserIntent = Intent.createChooser(contentIntent, "Tomar o seleccionar foto");
+                    chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{captureIntent});
+                    startActivityForResult(chooserIntent, FILECHOOSER_REQUEST_CODE);
+                    return true;
+                } catch (Exception e) {
+                    try {
+                        Intent intent = fileChooserParams.createIntent();
+                        startActivityForResult(intent, FILECHOOSER_REQUEST_CODE);
+                        return true;
+                    } catch (Exception ex) {
+                        filePathCallback = null;
+                        return false;
+                    }
+                }
+            }
+        });
+
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -125,7 +206,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-                // Navegación interna de la app: retornar false para que Next.js no se reinicie
+                // Navegación interna de la app
                 return false;
             }
 
@@ -149,6 +230,54 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_CAMERA) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                if (pendingPermissionRequest != null) {
+                    pendingPermissionRequest.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
+                    pendingPermissionRequest = null;
+                }
+                Toast.makeText(this, "Permiso de cámara concedido", Toast.LENGTH_SHORT).show();
+            } else {
+                if (pendingPermissionRequest != null) {
+                    pendingPermissionRequest.deny();
+                    pendingPermissionRequest = null;
+                }
+                Toast.makeText(this, "Permiso de cámara rechazado. Es necesario para escanear y tomar fotos.", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == FILECHOOSER_REQUEST_CODE) {
+            if (filePathCallback != null) {
+                Uri[] results = null;
+                if (resultCode == RESULT_OK) {
+                    if (data != null) {
+                        String dataString = data.getDataString();
+                        ClipData clipData = data.getClipData();
+                        if (clipData != null) {
+                            results = new Uri[clipData.getItemCount()];
+                            for (int i = 0; i < clipData.getItemCount(); i++) {
+                                results[i] = clipData.getItemAt(i).getUri();
+                            }
+                        } else if (dataString != null) {
+                            results = new Uri[]{Uri.parse(dataString)};
+                        } else if (data.getData() != null) {
+                            results = new Uri[]{data.getData()};
+                        }
+                    }
+                }
+                filePathCallback.onReceiveValue(results);
+                filePathCallback = null;
+            }
+        }
     }
 
     private void showError(String message) {
