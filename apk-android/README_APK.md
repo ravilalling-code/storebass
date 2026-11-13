@@ -52,3 +52,4 @@ Si tienes **Android Studio** instalado en tu computadora:
    - Activa el interruptor **«Permitir desde esta fuente»**.
    - Toca **Instalar**.
 4. ¡Listo! Tendrás la aplicación **StoreBass Monitor** en tu pantalla con su icono oficial.
+

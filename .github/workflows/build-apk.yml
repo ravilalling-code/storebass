@@ -3,10 +3,10 @@ name: Build Android APK - StoreBass Monitor
 on:
   push:
     branches: [ main ]
-    paths:
-      - 'apk-android/**'
-      - '.github/workflows/build-apk.yml'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build-apk:
@@ -21,23 +21,34 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Make Gradle Wrapper Executable
-        run: |
-          cd apk-android
-          gradle wrapper
-          chmod +x gradlew || true
-
       - name: Build APK with Gradle
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
         run: |
           cd apk-android
-          ./gradlew assembleDebug --stacktrace
+          gradle assembleDebug --stacktrace
 
-      - name: Upload APK Artifact
+      - name: Prepare APK File
+        run: |
+          mkdir -p dist-apk
+          find apk-android -name "*.apk" -exec cp {} dist-apk/storebass-monitor.apk \;
+          echo "APK file ready:"
+          ls -lh dist-apk/storebass-monitor.apk
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: storebass-monitor-apk
-          path: apk-android/app/build/outputs/apk/debug/*.apk
+          path: dist-apk/storebass-monitor.apk
           retention-days: 30
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v1.0.0-apk
+          name: "StoreBass Monitor App v1.0.0 (APK)"
+          body: "Descarga directa de StoreBass Monitor de Pedidos para Android."
+          files: dist-apk/storebass-monitor.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
