@@ -5,5 +5,6 @@
     <color name="accent_amber">#F59E0B</color>
     <color name="status_bar">#0B1B3D</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="sb_gold">#F59E0B</color>
+    <color name="sb_navy_dark">#0B1B3D</color>
 </resources>
-

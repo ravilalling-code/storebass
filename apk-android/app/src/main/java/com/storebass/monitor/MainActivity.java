@@ -15,6 +15,7 @@ import android.view.View;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebChromeClient.FileChooserParams;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -71,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
         btnRetry.setOnClickListener(v -> loadCurrentUrl());
         btnChangeUrl.setOnClickListener(v -> showChangeUrlDialog());
 
-        swipeRefreshLayout.setColorSchemeResources(R.color.sb_gold, R.color.sb_navy_dark);
+        swipeRefreshLayout.setColorSchemeResources(R.color.accent_amber, R.color.primary_navy);
         swipeRefreshLayout.setOnRefreshListener(() -> webView.reload());
 
         // Solicitar permisos de cámara en el arranque si no han sido otorgados
