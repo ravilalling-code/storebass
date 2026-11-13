@@ -10,6 +10,7 @@ import { ProductImageManager, type ProductImageDraft } from '@/components/admin/
 import { AdBanner } from '@/lib/types';
 import { useToast } from '@/context/CartContext';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { OrderMonitor } from '@/components/admin/OrderMonitor';
 
 export default function AdminPage() {
   const { showToast } = useToast();
@@ -26,7 +27,7 @@ export default function AdminPage() {
 
   // Tab Navigation State
   const [currentTab, setCurrentTab] = useState<
-    'dashboard' | 'catalog' | 'categories' | 'crm' | 'marketing' | 'settings'
+    'dashboard' | 'monitor' | 'catalog' | 'categories' | 'crm' | 'marketing' | 'settings'
   >('dashboard');
 
   // Catalog Products State
@@ -700,6 +701,12 @@ export default function AdminPage() {
             {[
               { id: 'dashboard', label: 'Dashboard & Métricas', icon: 'dashboard' },
               {
+                id: 'monitor',
+                label: 'Monitor de Pedidos',
+                icon: 'monitoring',
+                badge: 'USA',
+              },
+              {
                 id: 'catalog',
                 label: 'Catálogo & Precios',
                 icon: 'inventory_2',
@@ -749,7 +756,27 @@ export default function AdminPage() {
           </nav>
         </div>
 
-        <div className="p-4 border-t border-slate-800 space-y-2">
+        <div className="p-4 border-t border-slate-800 space-y-2.5">
+          {/* Widget Tipo de Cambio (USD -> PEN) como en la propuesta */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+            <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+              <span className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs">settings</span>
+                Tipo de cambio (USD → PEN)
+              </span>
+            </div>
+            <div className="flex items-center justify-between bg-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-800">
+              <span className="text-xs font-black text-amber-400">S/ {tripSettings.exchangeRate}</span>
+              <button
+                onClick={() => setCurrentTab('settings')}
+                className="text-slate-400 hover:text-amber-400 p-0.5 rounded transition-colors"
+                title="Ajustar tipo de cambio"
+              >
+                <span className="material-symbols-outlined text-xs">edit</span>
+              </button>
+            </div>
+          </div>
+
           <Link
             href="/"
             target="_blank"
@@ -782,6 +809,8 @@ export default function AdminPage() {
               <h2 className="text-base sm:text-lg font-bold text-white capitalize">
                 {currentTab === 'dashboard'
                   ? 'Dashboard General & Métricas'
+                  : currentTab === 'monitor'
+                  ? 'Monitor de Pedidos · Operaciones USA'
                   : currentTab === 'catalog'
                   ? 'Gestión de Catálogo & Precios'
                   : currentTab === 'categories'
@@ -989,6 +1018,51 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* TAB: MONITOR DE PEDIDOS (PROPUESTA STORE BASS OPERACIONES USA) */}
+          {currentTab === 'monitor' && (
+            <OrderMonitor
+              tickets={tickets}
+              exchangeRate={parseFloat(tripSettings.exchangeRate) || 3.5}
+              onUpdateExchangeRate={async (newRate: number) => {
+                setTripSettings((prev) => ({ ...prev, exchangeRate: newRate.toFixed(2) }));
+                const supabase = getSupabaseBrowserClient();
+                if (supabase) {
+                  try {
+                    await supabase
+                      .from('trip_config')
+                      .update({ exchange_rate: newRate, updated_at: new Date().toISOString() })
+                      .eq('id', 1);
+                  } catch (e) {
+                    console.error('Error updating exchange rate:', e);
+                  }
+                }
+              }}
+              onRefreshTickets={() => {
+                const supabase = getSupabaseBrowserClient();
+                if (supabase && isAuthenticated) {
+                  supabase
+                    .from('tickets')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .then(({ data }) => {
+                      if (data) {
+                        setTickets(
+                          data.map((t) => ({
+                            ...t,
+                            ticketId: t.ticket_code,
+                            fecha: new Date(t.created_at).toLocaleString('es-PE', {
+                              timeZone: 'America/Lima',
+                            }),
+                          }))
+                        );
+                      }
+                    });
+                }
+              }}
+              productsCatalog={products}
+            />
           )}
 
           {/* TAB 2: CATALOG */}
