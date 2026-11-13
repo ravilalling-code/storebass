@@ -179,15 +179,56 @@ export function OrderMonitor({
   const [newOrderForm, setNewOrderForm] = useState({
     cliente: '',
     telefono: '',
+    productSource: 'catalog' as 'catalog' | 'custom',
+    selectedCatalogId: '',
     productName: '',
     category: 'Tecnología',
-    quantity: 1,
-    costUsd: 50,
-    saleUsd: 70,
+    quantity: '1',
+    costUsd: '',
+    saleUsd: '',
     observation: '',
     img: '',
     barcode: '',
   });
+
+  // Catálogo web de productos
+  const [internalCatalog, setInternalCatalog] = useState<any[]>([]);
+  const catalogList = (productsCatalog && productsCatalog.length > 0) ? productsCatalog : internalCatalog;
+
+  useEffect(() => {
+    if (!productsCatalog || productsCatalog.length === 0) {
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        supabase
+          .from('products')
+          .select('*')
+          .eq('active', true)
+          .order('name')
+          .then(({ data }) => {
+            if (data && data.length > 0) setInternalCatalog(data);
+          });
+      }
+    }
+  }, [productsCatalog]);
+
+  const handleSelectCatalogProduct = (prodId: string) => {
+    const prod = catalogList.find((p) => p.id === prodId);
+    if (!prod) return;
+    const rate = exchangeRate || 3.5;
+    const sale = (Number(prod.price) / rate).toFixed(2);
+    const cost = (Number(sale) * 0.72).toFixed(2);
+
+    setNewOrderForm((prev) => ({
+      ...prev,
+      selectedCatalogId: prod.id,
+      productName: prod.name,
+      category: prod.category || 'General',
+      img: prod.img || '',
+      saleUsd: sale,
+      costUsd: cost,
+      observation: prod.description ? prod.description.substring(0, 120) : '',
+    }));
+  };
 
   // Modal para Editar Cliente
   const [editingClient, setEditingClient] = useState<{
@@ -859,7 +900,7 @@ export function OrderMonitor({
     }
   };
 
-  // Crear nuevo pedido manual
+  // Crear nuevo pedido manual o agregar producto a cliente existente
   const handleCreateManualOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newOrderForm.cliente.trim() || !newOrderForm.productName.trim()) {
@@ -870,9 +911,9 @@ export function OrderMonitor({
     setCreatingOrder(true);
     const supabase = getSupabaseBrowserClient();
     const rate = exchangeRate || 3.5;
-    const saleUsd = Number(newOrderForm.saleUsd) || 0;
-    const costUsd = Number(newOrderForm.costUsd) || 0;
-    const qty = Number(newOrderForm.quantity) || 1;
+    const saleUsd = parseFloat(newOrderForm.saleUsd) || 0;
+    const costUsd = parseFloat(newOrderForm.costUsd) || 0;
+    const qty = parseInt(newOrderForm.quantity) || 1;
     const penPrice = Number((saleUsd * rate).toFixed(2));
     const subtotalPen = penPrice * qty;
 
@@ -881,7 +922,7 @@ export function OrderMonitor({
       name: newOrderForm.productName.trim(),
       subtitle: newOrderForm.observation.trim(),
       img: newOrderForm.img,
-      category: newOrderForm.category,
+      category: newOrderForm.category || 'General',
       quantity: qty,
       cost_usd: costUsd,
       sale_usd: saleUsd,
@@ -894,30 +935,62 @@ export function OrderMonitor({
 
     if (supabase) {
       try {
-        const ticketCode = `TK-${Math.floor(1000 + Math.random() * 9000)}`;
-        const { error } = await supabase.from('tickets').insert({
-          ticket_code: ticketCode,
-          cliente: newOrderForm.cliente.trim(),
-          telefono: newOrderForm.telefono.trim(),
-          origen: 'manual_admin',
-          estado: 'Pendiente',
-          items: [newItem],
-          total: subtotalPen,
-          metodo_pago: 'Manual',
-        });
+        const clientClean = newOrderForm.cliente.trim();
+        const existingTicket = tickets.find(
+          (t) => t.cliente?.trim().toLowerCase() === clientClean.toLowerCase()
+        );
 
-        if (error) throw error;
+        if (existingTicket) {
+          const updatedItems = [...(existingTicket.items || []), newItem];
+          const newTotal = updatedItems.reduce(
+            (acc: number, it: any) =>
+              acc +
+              (Number(it.subtotal_pen) ||
+                Number(it.price_pen) * (Number(it.quantity) || 1) ||
+                0),
+            0
+          );
 
-        showToast('Pedido registrado en Supabase', `${ticketCode} - ${newOrderForm.cliente}`);
+          const { error } = await supabase
+            .from('tickets')
+            .update({
+              items: updatedItems,
+              total: Number(newTotal.toFixed(2)),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existingTicket.id);
+
+          if (error) throw error;
+          showToast('Producto agregado al cliente', `${clientClean}: ${newItem.name}`);
+        } else {
+          const ticketCode = `TK-${Math.floor(1000 + Math.random() * 9000)}`;
+          const { error } = await supabase.from('tickets').insert({
+            ticket_code: ticketCode,
+            cliente: clientClean,
+            telefono: newOrderForm.telefono.trim() || '+51 900 000 000',
+            origen: 'WhatsApp',
+            tipo: 'whatsapp_manual',
+            estado: 'Pendiente',
+            items: [newItem],
+            total: subtotalPen,
+            metodo_pago: 'Manual',
+          });
+
+          if (error) throw error;
+          showToast('Pedido registrado en Supabase', `${ticketCode} - ${clientClean}`);
+        }
+
         setIsModalOpen(false);
         setNewOrderForm({
           cliente: '',
           telefono: '',
+          productSource: 'catalog',
+          selectedCatalogId: '',
           productName: '',
           category: 'Tecnología',
-          quantity: 1,
-          costUsd: 50,
-          saleUsd: 70,
+          quantity: '1',
+          costUsd: '',
+          saleUsd: '',
           observation: '',
           img: '',
           barcode: '',
@@ -1093,15 +1166,6 @@ export function OrderMonitor({
           )}
 
           <button
-            onClick={handleClearAllTickets}
-            className="px-3.5 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-            title="Borrar todos los pedidos para empezar desde cero"
-          >
-            <span className="material-symbols-outlined text-base">delete_sweep</span>
-            <span>Limpiar todo (0)</span>
-          </button>
-
-          <button
             onClick={() => setIsModalOpen(true)}
             className="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold px-5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 transition-all cursor-pointer"
           >
@@ -1208,9 +1272,9 @@ export function OrderMonitor({
               <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
                 <span className="material-symbols-outlined text-3xl">shopping_cart_checkout</span>
               </div>
-              <p className="font-bold text-slate-900 text-base">Monitor listo y limpio</p>
+              <p className="font-bold text-slate-900 text-base">Sin pedidos registrados</p>
               <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
-                No hay pedidos registrados en este momento. Registra un pedido manual con el botón superior o sincronízalo en vivo desde la app móvil STOREBASS.
+                Aún no tienes pedidos registrados en el monitor. Agrega el primer pedido con el botón superior para comenzar o sincronízalo en vivo desde la app móvil STOREBASS.
               </p>
               <div className="mt-5 flex justify-center gap-2">
                 <button
@@ -1664,8 +1728,69 @@ export function OrderMonitor({
                 </div>
               </div>
 
+              {/* Origen del Producto: Catálogo Web vs Personalizado */}
               <div>
-                <label className="block text-slate-700 font-bold mb-1">Producto a Comprar *</label>
+                <label className="block text-slate-700 font-bold mb-1.5">Origen del Producto</label>
+                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setNewOrderForm((prev) => ({ ...prev, productSource: 'catalog' }))
+                    }
+                    className={`py-1.5 rounded-lg font-bold text-xs transition-all ${
+                      newOrderForm.productSource === 'catalog'
+                        ? 'bg-white text-blue-700 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    📦 Del Catálogo Web
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setNewOrderForm((prev) => ({
+                        ...prev,
+                        productSource: 'custom',
+                        selectedCatalogId: '',
+                      }))
+                    }
+                    className={`py-1.5 rounded-lg font-bold text-xs transition-all ${
+                      newOrderForm.productSource === 'custom'
+                        ? 'bg-white text-blue-700 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    ✨ Producto Nuevo / Otro
+                  </button>
+                </div>
+              </div>
+
+              {/* Selector del Catálogo si está activo */}
+              {newOrderForm.productSource === 'catalog' && (
+                <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-2">
+                  <label className="block text-blue-900 font-black">
+                    Selecciona Producto de la Web ({catalogList.length} disponibles)
+                  </label>
+                  <select
+                    value={newOrderForm.selectedCatalogId}
+                    onChange={(e) => handleSelectCatalogProduct(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-blue-300 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="">-- Elige un producto del catálogo --</option>
+                    {catalogList.map((prod) => (
+                      <option key={prod.id} value={prod.id}>
+                        {prod.name} (S/ {prod.price})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-blue-700">
+                    Se completan automáticamente el nombre, categoría, foto y precios estimados. Puedes ajustarlos libremente abajo.
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">Nombre del Producto *</label>
                 <input
                   type="text"
                   required
@@ -1737,24 +1862,29 @@ export function OrderMonitor({
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-blue-500"
                   >
                     <option value="Tecnología">Tecnología</option>
+                    <option value="Apple">Apple</option>
                     <option value="Hogar">Hogar</option>
                     <option value="Ropa">Ropa / Moda</option>
                     <option value="Perfumes">Perfumes</option>
                     <option value="Belleza">Belleza</option>
-                    <option value="Apple">Apple</option>
+                    <option value="Suplementos">Suplementos</option>
                     <option value="Relojes">Relojes</option>
+                    <option value="General">General</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">Cantidad</label>
                   <input
                     type="number"
+                    inputMode="numeric"
                     min="1"
+                    placeholder="1"
                     value={newOrderForm.quantity}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) =>
                       setNewOrderForm({
                         ...newOrderForm,
-                        quantity: parseInt(e.target.value) || 1,
+                        quantity: e.target.value,
                       })
                     }
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-blue-500"
@@ -1764,12 +1894,15 @@ export function OrderMonitor({
                   <label className="block text-slate-700 font-bold mb-1">Costo USA ($)</label>
                   <input
                     type="number"
-                    step="0.1"
+                    inputMode="decimal"
+                    step="any"
+                    placeholder="Ej. 50"
                     value={newOrderForm.costUsd}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) =>
                       setNewOrderForm({
                         ...newOrderForm,
-                        costUsd: parseFloat(e.target.value) || 0,
+                        costUsd: e.target.value,
                       })
                     }
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-blue-500"
@@ -1782,18 +1915,23 @@ export function OrderMonitor({
                   <label className="block text-slate-700 font-bold mb-1">Precio Cobrado ($ USD)</label>
                   <input
                     type="number"
-                    step="0.1"
+                    inputMode="decimal"
+                    step="any"
+                    placeholder="Ej. 70"
                     value={newOrderForm.saleUsd}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) =>
                       setNewOrderForm({
                         ...newOrderForm,
-                        saleUsd: parseFloat(e.target.value) || 0,
+                        saleUsd: e.target.value,
                       })
                     }
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-blue-500"
                   />
                   <span className="text-[10px] text-slate-400 mt-0.5 block">
-                    Equivalente: S/ {(newOrderForm.saleUsd * exchangeRate).toFixed(2)}
+                    {newOrderForm.saleUsd
+                      ? `Equivalente: S/ ${(parseFloat(newOrderForm.saleUsd) * exchangeRate).toFixed(2)}`
+                      : 'Equivalente en Soles automático'}
                   </span>
                 </div>
                 <div>
@@ -1997,6 +2135,7 @@ export function OrderMonitor({
                     type="number"
                     min="1"
                     value={editingProduct.item.quantity}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) =>
                       setEditingProduct({
                         ...editingProduct,
@@ -2016,8 +2155,9 @@ export function OrderMonitor({
                   <label className="block text-slate-700 font-bold mb-1">Costo USA ($)</label>
                   <input
                     type="number"
-                    step="0.1"
-                    value={editingProduct.item.cost_usd}
+                    step="any"
+                    value={editingProduct.item.cost_usd || ''}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) =>
                       setEditingProduct({
                         ...editingProduct,
@@ -2034,8 +2174,9 @@ export function OrderMonitor({
                   <label className="block text-slate-700 font-bold mb-1">Venta USA ($)</label>
                   <input
                     type="number"
-                    step="0.1"
-                    value={editingProduct.item.sale_usd}
+                    step="any"
+                    value={editingProduct.item.sale_usd || ''}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) =>
                       setEditingProduct({
                         ...editingProduct,

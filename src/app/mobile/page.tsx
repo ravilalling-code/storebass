@@ -73,19 +73,24 @@ export default function MobileMonitorPage() {
     item: MobileItem;
   } | null>(null);
 
-  // Estado del Formulario de Nuevo Pedido
+  // Estado del Formulario de Nuevo Pedido (Campos limpios sin 0 por defecto)
   const [orderForm, setOrderForm] = useState({
     cliente: '',
     telefono: '',
+    productSource: 'catalog' as 'catalog' | 'custom',
+    selectedCatalogId: '',
     productName: '',
     category: 'Tecnología',
-    quantity: 1,
-    costUsd: 50,
-    saleUsd: 70,
+    quantity: '1',
+    costUsd: '',
+    saleUsd: '',
     observation: '',
     img: '',
     barcode: '',
   });
+
+  // Productos cargados desde el catálogo de la web
+  const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
 
   // Escáner de Código de Barras
   const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
@@ -155,6 +160,18 @@ export default function MobileMonitorPage() {
       setIsLoading(false);
       return;
     }
+
+    // Cargar productos del catálogo web
+    supabase
+      .from('products')
+      .select('*')
+      .eq('active', true)
+      .order('name')
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setCatalogProducts(data);
+        }
+      });
 
     // Cargar tipo de cambio
     supabase
@@ -759,26 +776,49 @@ export default function MobileMonitorPage() {
     }
   };
 
-  // 8. REGISTRAR NUEVO PEDIDO MANUAL
+  // Selección de producto existente desde el catálogo de la web
+  const handleSelectCatalogProduct = (prodId: string) => {
+    const prod = catalogProducts.find((p) => p.id === prodId);
+    if (!prod) return;
+    const rate = exchangeRate || 3.5;
+    const sale = (Number(prod.price) / rate).toFixed(2);
+    const cost = (Number(sale) * 0.72).toFixed(2);
+
+    setOrderForm((prev) => ({
+      ...prev,
+      selectedCatalogId: prod.id,
+      productName: prod.name,
+      category: prod.category || 'General',
+      img: prod.img || '',
+      saleUsd: sale,
+      costUsd: cost,
+      observation: prod.description ? prod.description.substring(0, 120) : '',
+    }));
+  };
+
+  // 8. REGISTRAR NUEVO PEDIDO MANUAL O AGREGAR A CLIENTE EXISTENTE
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!orderForm.cliente || !orderForm.productName) {
+    if (!orderForm.cliente.trim() || !orderForm.productName.trim()) {
       showToast('Campos requeridos', 'Ingresa cliente y producto');
       return;
     }
 
     setIsSubmittingOrder(true);
-    const penPrice = Number((orderForm.saleUsd * exchangeRate).toFixed(2));
-    const subtotalPen = penPrice * orderForm.quantity;
+    const qty = parseInt(orderForm.quantity) || 1;
+    const saleUsd = parseFloat(orderForm.saleUsd) || 0;
+    const costUsd = parseFloat(orderForm.costUsd) || 0;
+    const penPrice = Number((saleUsd * exchangeRate).toFixed(2));
+    const subtotalPen = penPrice * qty;
 
     const newItem: MobileItem = {
       id: `it-${Date.now()}`,
       name: orderForm.productName.trim(),
       subtitle: orderForm.observation.trim(),
-      category: orderForm.category,
-      quantity: Number(orderForm.quantity) || 1,
-      cost_usd: Number(orderForm.costUsd) || 0,
-      sale_usd: Number(orderForm.saleUsd) || 0,
+      category: orderForm.category || 'General',
+      quantity: qty,
+      cost_usd: costUsd,
+      sale_usd: saleUsd,
       price_pen: penPrice,
       subtotal_pen: subtotalPen,
       is_purchased: false,
@@ -790,38 +830,86 @@ export default function MobileMonitorPage() {
     const supabase = getSupabaseBrowserClient();
     if (supabase) {
       try {
-        await supabase.rpc('fn_create_ticket', {
-          p_origen: 'WhatsApp',
-          p_cliente: orderForm.cliente.trim(),
-          p_telefono: orderForm.telefono.trim() || '+51 900 000 000',
-          p_detalle: `${newItem.name} x${newItem.quantity} (${newItem.category})`,
-          p_total: subtotalPen,
-          p_estado: 'Pendiente',
-          p_tipo: 'whatsapp_manual',
-          p_items: [newItem],
+        const clientClean = orderForm.cliente.trim();
+        const existingTicket = tickets.find(
+          (t) => t.cliente?.trim().toLowerCase() === clientClean.toLowerCase()
+        );
+
+        if (existingTicket) {
+          const updatedItems = [...(existingTicket.items || []), newItem];
+          const newTotal = updatedItems.reduce(
+            (acc: number, it: any) =>
+              acc +
+              (Number(it.subtotal_pen) ||
+                (Number(it.price_pen ?? it.price) || 0) * (Number(it.quantity) || 1)),
+            0
+          );
+          const { error } = await supabase
+            .from('tickets')
+            .update({
+              items: updatedItems,
+              total: newTotal,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existingTicket.id);
+
+          if (error) throw error;
+          showToast('¡Producto Agregado!', `Se añadió al pedido de ${existingTicket.cliente}`);
+        } else {
+          const { error } = await supabase.rpc('fn_create_ticket', {
+            p_origen: 'WhatsApp',
+            p_cliente: clientClean,
+            p_telefono: orderForm.telefono.trim() || '+51 900 000 000',
+            p_detalle: `${newItem.name} x${newItem.quantity} (${newItem.category})`,
+            p_total: subtotalPen,
+            p_estado: 'Pendiente',
+            p_tipo: 'whatsapp_manual',
+            p_items: [newItem],
+          });
+
+          if (error) {
+            console.warn('RPC falló, insertando directo en tickets:', error);
+            const ticketCode = `TK-${Math.floor(1000 + Math.random() * 9000)}`;
+            const { error: insErr } = await supabase.from('tickets').insert({
+              ticket_code: ticketCode,
+              correlativo: Math.floor(2000 + Math.random() * 8000),
+              cliente: clientClean,
+              telefono: orderForm.telefono.trim() || '+51 900 000 000',
+              detalle: `${newItem.name} x${newItem.quantity}`,
+              origen: 'WhatsApp',
+              estado: 'Pendiente',
+              tipo: 'whatsapp_manual',
+              items: [newItem],
+              total: subtotalPen,
+            });
+            if (insErr) throw insErr;
+          }
+          showToast('¡Pedido Guardado!', `Registrado en Supabase para ${clientClean}`);
+        }
+
+        await fetchTickets();
+        setIsOrderModalOpen(false);
+        setOrderForm({
+          cliente: '',
+          telefono: '',
+          productSource: 'catalog',
+          selectedCatalogId: '',
+          productName: '',
+          category: 'Tecnología',
+          quantity: '1',
+          costUsd: '',
+          saleUsd: '',
+          observation: '',
+          img: '',
+          barcode: '',
         });
-        showToast('¡Pedido Guardado!', `Registrado en Supabase para ${orderForm.cliente}`);
-        fetchTickets();
       } catch (err) {
         console.error(err);
         showToast('Error', 'No se pudo guardar el pedido en la base de datos.');
+      } finally {
+        setIsSubmittingOrder(false);
       }
     }
-
-    setIsSubmittingOrder(false);
-    setIsOrderModalOpen(false);
-    setOrderForm({
-      cliente: '',
-      telefono: '',
-      productName: '',
-      category: 'Tecnología',
-      quantity: 1,
-      costUsd: 50,
-      saleUsd: 70,
-      observation: '',
-      img: '',
-      barcode: '',
-    });
   };
 
   // Guardar Tipo de Cambio
@@ -972,13 +1060,6 @@ export default function MobileMonitorPage() {
             <span>Escanear Código de Barras</span>
           </button>
 
-          <button
-            onClick={handleClearAllTickets}
-            className="w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-xs font-bold text-rose-300 hover:text-rose-200 hover:bg-rose-950/40 transition-colors"
-          >
-            <span className="material-symbols-outlined text-lg text-rose-400">delete_forever</span>
-            <span>Limpiar todo (Empezar de 0)</span>
-          </button>
 
           <Link
             href="/admin"
@@ -1213,19 +1294,19 @@ export default function MobileMonitorPage() {
               <p className="font-bold text-xs">Cargando tus pedidos desde Supabase...</p>
             </div>
           ) : filteredCustomers.length === 0 ? (
-            /* ESTADO LIMPIO: EMPEZAR DESDE 0 */
+            /* ESTADO LIMPIO: SIN PEDIDOS REGISTRADOS */
             <div className="bg-white border border-slate-200/90 rounded-3xl p-8 text-center space-y-4 shadow-sm">
               <div className="w-16 h-16 rounded-3xl bg-blue-50 border border-blue-100 flex items-center justify-center mx-auto text-blue-600 shadow-xs">
                 <span className="material-symbols-outlined text-3xl font-bold">
-                  add_shopping_cart
+                  receipt_long
                 </span>
               </div>
               <div>
                 <h3 className="text-base font-black text-slate-900">
-                  Monitor Limpio: Listo para empezar desde 0
+                  Sin pedidos registrados
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
-                  Aún no tienes pedidos registrados en la base de datos. Comienza agregando tu primer cliente o pedido.
+                  Aún no tienes pedidos registrados en el monitor. Agrega el primer pedido para comenzar.
                 </p>
               </div>
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
@@ -1235,15 +1316,6 @@ export default function MobileMonitorPage() {
                 >
                   <span className="material-symbols-outlined text-base font-bold">add</span>
                   <span>Registrar Primer Pedido</span>
-                </button>
-                <button
-                  onClick={() => startBarcodeScanner('new')}
-                  className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-800 font-bold text-xs flex items-center justify-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-base text-amber-600">
-                    barcode_scanner
-                  </span>
-                  <span>Escanear Código de Barras</span>
                 </button>
               </div>
             </div>
@@ -1792,18 +1864,100 @@ export default function MobileMonitorPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">
+              {/* Selector: ¿Catálogo de la Web o Producto Nuevo? */}
+              <div className="space-y-2 pt-1 border-t border-slate-100">
+                <label className="block text-slate-700 font-bold">
                   Producto a Traer de USA *
                 </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ej. AirPods Pro 2 USB-C o Termo Stanley 40oz"
-                  value={orderForm.productName}
-                  onChange={(e) => setOrderForm({ ...orderForm, productName: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:border-blue-500"
-                />
+                <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOrderForm((p) => ({ ...p, productSource: 'catalog' }))
+                    }
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      orderForm.productSource === 'catalog'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-sm">inventory_2</span>
+                    <span>Del Catálogo Web</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOrderForm((p) => ({
+                        ...p,
+                        productSource: 'custom',
+                        selectedCatalogId: '',
+                      }))
+                    }
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      orderForm.productSource === 'custom'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-sm">add_circle</span>
+                    <span>Producto Nuevo / Otro</span>
+                  </button>
+                </div>
+
+                {/* Si elige catálogo web */}
+                {orderForm.productSource === 'catalog' ? (
+                  <div className="space-y-2">
+                    <select
+                      value={orderForm.selectedCatalogId}
+                      onChange={(e) => handleSelectCatalogProduct(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-blue-50/60 border border-blue-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-blue-500 text-xs cursor-pointer"
+                    >
+                      <option value="">-- Toca aquí para elegir producto de la web --</option>
+                      {catalogProducts.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} (S/ {p.price})
+                        </option>
+                      ))}
+                    </select>
+
+                    {orderForm.productName && (
+                      <div className="flex items-center gap-2 p-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs">
+                        {orderForm.img && (
+                          <div className="w-10 h-10 rounded-lg overflow-hidden relative shrink-0">
+                            <Image
+                              src={orderForm.img}
+                              alt={orderForm.productName}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-slate-900 truncate">
+                            {orderForm.productName}
+                          </div>
+                          <div className="text-[10px] text-emerald-700 font-semibold">
+                            Categoría: {orderForm.category}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Si elige producto nuevo */
+                  <div>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Escribe el nombre del producto nuevo (ej. Stanley Quencher 40oz)"
+                      value={orderForm.productName}
+                      onChange={(e) =>
+                        setOrderForm({ ...orderForm, productName: e.target.value })
+                      }
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1815,12 +1969,14 @@ export default function MobileMonitorPage() {
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-blue-500"
                   >
                     <option value="Tecnología">Tecnología</option>
+                    <option value="Apple">Apple</option>
                     <option value="Hogar">Hogar</option>
                     <option value="Ropa">Ropa / Moda</option>
                     <option value="Perfumes">Perfumes</option>
                     <option value="Belleza">Belleza</option>
-                    <option value="Apple">Apple</option>
+                    <option value="Suplementos">Suplementos</option>
                     <option value="Relojes">Relojes</option>
+                    <option value="General">General</option>
                   </select>
                 </div>
 
@@ -1830,9 +1986,11 @@ export default function MobileMonitorPage() {
                     type="number"
                     inputMode="numeric"
                     min="1"
+                    placeholder="1"
                     value={orderForm.quantity}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) =>
-                      setOrderForm({ ...orderForm, quantity: parseInt(e.target.value) || 1 })
+                      setOrderForm({ ...orderForm, quantity: e.target.value })
                     }
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-black text-center focus:outline-none focus:border-blue-500"
                   />
@@ -1845,10 +2003,12 @@ export default function MobileMonitorPage() {
                   <input
                     type="number"
                     inputMode="decimal"
-                    step="0.1"
+                    step="any"
+                    placeholder="Ej. 50"
                     value={orderForm.costUsd}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) =>
-                      setOrderForm({ ...orderForm, costUsd: parseFloat(e.target.value) || 0 })
+                      setOrderForm({ ...orderForm, costUsd: e.target.value })
                     }
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-blue-500"
                   />
@@ -1859,15 +2019,19 @@ export default function MobileMonitorPage() {
                   <input
                     type="number"
                     inputMode="decimal"
-                    step="0.1"
+                    step="any"
+                    placeholder="Ej. 70"
                     value={orderForm.saleUsd}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) =>
-                      setOrderForm({ ...orderForm, saleUsd: parseFloat(e.target.value) || 0 })
+                      setOrderForm({ ...orderForm, saleUsd: e.target.value })
                     }
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-blue-500"
                   />
                   <span className="text-[10px] text-slate-400 mt-0.5 block font-mono">
-                    = S/ {(orderForm.saleUsd * exchangeRate).toFixed(2)}
+                    {orderForm.saleUsd
+                      ? `= S/ ${(parseFloat(orderForm.saleUsd) * exchangeRate).toFixed(2)}`
+                      : 'En Soles se calcula auto'}
                   </span>
                 </div>
               </div>
@@ -2095,6 +2259,7 @@ export default function MobileMonitorPage() {
                     inputMode="numeric"
                     min="1"
                     value={editingProduct.item.quantity}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) =>
                       setEditingProduct({
                         ...editingProduct,
@@ -2115,8 +2280,9 @@ export default function MobileMonitorPage() {
                   <input
                     type="number"
                     inputMode="decimal"
-                    step="0.1"
-                    value={editingProduct.item.cost_usd}
+                    step="any"
+                    value={editingProduct.item.cost_usd || ''}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) =>
                       setEditingProduct({
                         ...editingProduct,
@@ -2135,8 +2301,9 @@ export default function MobileMonitorPage() {
                   <input
                     type="number"
                     inputMode="decimal"
-                    step="0.1"
-                    value={editingProduct.item.sale_usd}
+                    step="any"
+                    value={editingProduct.item.sale_usd || ''}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) =>
                       setEditingProduct({
                         ...editingProduct,
