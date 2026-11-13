@@ -319,6 +319,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        // Al volver a entrar a la aplicación, recarga automáticamente para reflejar cualquier cambio en Vercel
+        if (webView != null && webView.getUrl() != null) {
+            webView.reload();
+        }
+    }
+
+    @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
             webView.goBack();

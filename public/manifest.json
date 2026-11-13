@@ -1,6 +1,6 @@
 {
-  "name": "StoreBass Monitor",
-  "short_name": "StoreBass",
+  "name": "STOREBASS",
+  "short_name": "STOREBASS",
   "description": "App móvil para control y seguimiento de pedidos, compras en USA y ganancias",
   "start_url": "/mobile",
   "display": "standalone",
