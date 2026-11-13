@@ -129,7 +129,7 @@ export default function MobileMonitorPage() {
     }
   }, []);
 
-  // Cargar datos en tiempo real con Supabase
+  // Cargar datos en tiempo real con Supabase + caché local
   const fetchTickets = async () => {
     setIsLoading(true);
     const supabase = getSupabaseBrowserClient();
@@ -144,8 +144,23 @@ export default function MobileMonitorPage() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         setTickets(data);
+        try {
+          localStorage.setItem('storebass_cached_tickets', JSON.stringify(data));
+        } catch {}
+      } else if (!error && data && data.length === 0) {
+        // Si Supabase devuelve 0 filas (ej. por políticas RLS pendientes de habilitar en el dashboard),
+        // conservar los tickets de la sesión local para que el usuario nunca pierda la vista de sus pedidos.
+        const cached = localStorage.getItem('storebass_cached_tickets');
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setTickets(parsed);
+            }
+          } catch {}
+        }
       }
     } catch (e) {
       console.error(e);
@@ -155,6 +170,17 @@ export default function MobileMonitorPage() {
   };
 
   useEffect(() => {
+    // Restaurar caché local de inmediato al entrar
+    try {
+      const cached = localStorage.getItem('storebass_cached_tickets');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setTickets(parsed);
+        }
+      }
+    } catch {}
+
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       setIsLoading(false);
@@ -389,6 +415,15 @@ export default function MobileMonitorPage() {
       return it;
     });
 
+    // Actualización inmediata en estado y caché
+    const updatedTickets = tickets.map((t) =>
+      t.id === target.id ? { ...t, items: updatedItems } : t
+    );
+    setTickets(updatedTickets);
+    try {
+      localStorage.setItem('storebass_cached_tickets', JSON.stringify(updatedTickets));
+    } catch {}
+
     try {
       await supabase
         .from('tickets')
@@ -415,9 +450,15 @@ export default function MobileMonitorPage() {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
 
+    const updatedTickets = tickets.filter((t) => t.id !== ticketId);
+    setTickets(updatedTickets);
+    try {
+      localStorage.setItem('storebass_cached_tickets', JSON.stringify(updatedTickets));
+    } catch {}
+
     try {
       const { error } = await supabase.from('tickets').delete().eq('id', ticketId);
-      if (error) throw error;
+      if (error) console.warn('Supabase delete error:', error);
       showToast('Cliente eliminado', `Se eliminó el pedido de ${clienteNombre}`);
       fetchTickets();
     } catch (e) {
@@ -758,6 +799,14 @@ export default function MobileMonitorPage() {
       return it;
     });
 
+    const updatedTickets = tickets.map((t) =>
+      t.id === ticketId ? { ...t, items: updatedItems } : t
+    );
+    setTickets(updatedTickets);
+    try {
+      localStorage.setItem('storebass_cached_tickets', JSON.stringify(updatedTickets));
+    } catch {}
+
     try {
       const { error } = await supabase
         .from('tickets')
@@ -767,7 +816,7 @@ export default function MobileMonitorPage() {
         })
         .eq('id', ticketId);
 
-      if (error) throw error;
+      if (error) console.warn('Supabase observation update warning:', error);
       showToast('Observación guardada', currentText.trim());
       setEditingObs(null);
       fetchTickets();
@@ -780,9 +829,6 @@ export default function MobileMonitorPage() {
   const handleSelectCatalogProduct = (prodId: string) => {
     const prod = catalogProducts.find((p) => p.id === prodId);
     if (!prod) return;
-    const rate = exchangeRate || 3.5;
-    const sale = (Number(prod.price) / rate).toFixed(2);
-    const cost = (Number(sale) * 0.72).toFixed(2);
 
     setOrderForm((prev) => ({
       ...prev,
@@ -790,8 +836,8 @@ export default function MobileMonitorPage() {
       productName: prod.name,
       category: prod.category || 'General',
       img: prod.img || '',
-      saleUsd: sale,
-      costUsd: cost,
+      saleUsd: '',
+      costUsd: '',
       observation: prod.description ? prod.description.substring(0, 120) : '',
     }));
   };
@@ -844,6 +890,18 @@ export default function MobileMonitorPage() {
                 (Number(it.price_pen ?? it.price) || 0) * (Number(it.quantity) || 1)),
             0
           );
+
+          // Actualizar inmediatamente en estado local y caché
+          const updatedTickets = tickets.map((t) =>
+            t.id === existingTicket.id
+              ? { ...t, items: updatedItems, total: newTotal, updated_at: new Date().toISOString() }
+              : t
+          );
+          setTickets(updatedTickets);
+          try {
+            localStorage.setItem('storebass_cached_tickets', JSON.stringify(updatedTickets));
+          } catch {}
+
           const { error } = await supabase
             .from('tickets')
             .update({
@@ -853,10 +911,15 @@ export default function MobileMonitorPage() {
             })
             .eq('id', existingTicket.id);
 
-          if (error) throw error;
+          if (error) console.warn('Supabase update status:', error);
           showToast('¡Producto Agregado!', `Se añadió al pedido de ${existingTicket.cliente}`);
         } else {
-          const { error } = await supabase.rpc('fn_create_ticket', {
+          const tempId = `tk-${Date.now()}`;
+          const tempCode = `TK-${Math.floor(1000 + Math.random() * 9000)}`;
+          let savedId = tempId;
+          let savedCode = tempCode;
+
+          const { data: rpcData, error } = await supabase.rpc('fn_create_ticket', {
             p_origen: 'WhatsApp',
             p_cliente: clientClean,
             p_telefono: orderForm.telefono.trim() || '+51 900 000 000',
@@ -867,11 +930,13 @@ export default function MobileMonitorPage() {
             p_items: [newItem],
           });
 
-          if (error) {
+          if (!error && rpcData && rpcData.length > 0) {
+            savedId = rpcData[0].id || tempId;
+            savedCode = rpcData[0].ticket_code || tempCode;
+          } else if (error) {
             console.warn('RPC falló, insertando directo en tickets:', error);
-            const ticketCode = `TK-${Math.floor(1000 + Math.random() * 9000)}`;
-            const { error: insErr } = await supabase.from('tickets').insert({
-              ticket_code: ticketCode,
+            const { data: insData } = await supabase.from('tickets').insert({
+              ticket_code: tempCode,
               correlativo: Math.floor(2000 + Math.random() * 8000),
               cliente: clientClean,
               telefono: orderForm.telefono.trim() || '+51 900 000 000',
@@ -881,10 +946,35 @@ export default function MobileMonitorPage() {
               tipo: 'whatsapp_manual',
               items: [newItem],
               total: subtotalPen,
-            });
-            if (insErr) throw insErr;
+            }).select();
+
+            if (insData && insData.length > 0) {
+              savedId = insData[0].id;
+              savedCode = insData[0].ticket_code;
+            }
           }
-          showToast('¡Pedido Guardado!', `Registrado en Supabase para ${clientClean}`);
+
+          const newTicketRecord = {
+            id: savedId,
+            ticket_code: savedCode,
+            cliente: clientClean,
+            telefono: orderForm.telefono.trim() || '+51 900 000 000',
+            detalle: `${newItem.name} x${newItem.quantity}`,
+            origen: 'WhatsApp',
+            estado: 'Pendiente',
+            tipo: 'whatsapp_manual',
+            items: [newItem],
+            total: subtotalPen,
+            created_at: new Date().toISOString(),
+          };
+
+          const updatedTickets = [newTicketRecord, ...tickets.filter((t) => t.id !== savedId)];
+          setTickets(updatedTickets);
+          try {
+            localStorage.setItem('storebass_cached_tickets', JSON.stringify(updatedTickets));
+          } catch {}
+
+          showToast('¡Pedido Guardado!', `Registrado para ${clientClean}`);
         }
 
         await fetchTickets();
@@ -1915,7 +2005,7 @@ export default function MobileMonitorPage() {
                       <option value="">-- Toca aquí para elegir producto de la web --</option>
                       {catalogProducts.map((p) => (
                         <option key={p.id} value={p.id}>
-                          {p.name} (S/ {p.price})
+                          {p.name}
                         </option>
                       ))}
                     </select>

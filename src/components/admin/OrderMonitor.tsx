@@ -214,9 +214,6 @@ export function OrderMonitor({
   const handleSelectCatalogProduct = (prodId: string) => {
     const prod = catalogList.find((p) => p.id === prodId);
     if (!prod) return;
-    const rate = exchangeRate || 3.5;
-    const sale = (Number(prod.price) / rate).toFixed(2);
-    const cost = (Number(sale) * 0.72).toFixed(2);
 
     setNewOrderForm((prev) => ({
       ...prev,
@@ -224,8 +221,8 @@ export function OrderMonitor({
       productName: prod.name,
       category: prod.category || 'General',
       img: prod.img || '',
-      saleUsd: sale,
-      costUsd: cost,
+      saleUsd: '',
+      costUsd: '',
       observation: prod.description ? prod.description.substring(0, 120) : '',
     }));
   };
@@ -1779,7 +1776,7 @@ export function OrderMonitor({
                     <option value="">-- Elige un producto del catálogo --</option>
                     {catalogList.map((prod) => (
                       <option key={prod.id} value={prod.id}>
-                        {prod.name} (S/ {prod.price})
+                        {prod.name}
                       </option>
                     ))}
                   </select>
