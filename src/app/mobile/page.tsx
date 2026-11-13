@@ -62,7 +62,7 @@ export default function MobileMonitorPage() {
 
   // Estados principales
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'cliente' | 'producto'>('cliente');
+  const [viewMode, setViewMode] = useState<'cliente' | 'producto' | 'monetizacion'>('cliente');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
   const [exchangeRate, setExchangeRate] = useState<number>(3.5);
@@ -119,6 +119,7 @@ export default function MobileMonitorPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scannerStreamRef = useRef<MediaStream | null>(null);
   const html5QrCodeRef = useRef<any>(null);
+  const isStoppingScannerRef = useRef(false);
   const [scannerStatus, setScannerStatus] = useState('Iniciando cámara...');
 
   // Referencias para foto (Cámara nativa y Galería)
@@ -423,30 +424,43 @@ export default function MobileMonitorPage() {
     };
   }, [customerGroups, exchangeRate]);
 
-  // Vista agrupada por producto
+  // Vista agrupada por producto con métricas financieras
   const groupedProducts = useMemo(() => {
     const map: Record<string, any> = {};
     customerGroups.forEach((c) => {
       c.items.forEach((it) => {
         const k = it.name.trim();
+        const qty = it.quantity || 1;
+        const costUsd = Number(it.cost_usd) || 0;
+        const saleUsd = Number(it.sale_usd) || 0;
+        const profitUsd = (saleUsd - costUsd) * qty;
+
         if (!map[k]) {
           map[k] = {
             name: it.name,
             category: it.category,
             img: it.img,
-            cost_usd: it.cost_usd,
+            cost_usd: costUsd,
+            sale_usd: saleUsd,
             totalUnits: 0,
             purchasedUnits: 0,
+            totalCostUSD: 0,
+            totalSaleUSD: 0,
+            totalProfitUSD: 0,
             clients: [],
           };
         }
-        map[k].totalUnits += it.quantity;
-        if (it.is_purchased) map[k].purchasedUnits += it.quantity;
+        map[k].totalUnits += qty;
+        if (it.is_purchased) map[k].purchasedUnits += qty;
+        map[k].totalCostUSD += costUsd * qty;
+        map[k].totalSaleUSD += saleUsd * qty;
+        map[k].totalProfitUSD += profitUsd;
+
         map[k].clients.push({
           cliente: c.cliente,
           ticketId: c.ticketId,
           itemId: it.id,
-          quantity: it.quantity,
+          quantity: qty,
           is_purchased: it.is_purchased,
           obs: it.observation || it.subtitle || '',
         });
@@ -789,22 +803,47 @@ export default function MobileMonitorPage() {
     setScannerStatus('Iniciando cámara trasera...');
   };
 
-  const stopBarcodeScanner = () => {
-    if (html5QrCodeRef.current) {
+  const stopBarcodeScanner = async () => {
+    if (isStoppingScannerRef.current) return;
+    isStoppingScannerRef.current = true;
+
+    const scanner = html5QrCodeRef.current;
+    html5QrCodeRef.current = null;
+
+    if (scanner) {
       try {
-        html5QrCodeRef.current.stop().catch(() => {}).then(() => {
-          try {
-            html5QrCodeRef.current?.clear();
-          } catch {}
-          html5QrCodeRef.current = null;
-        });
-      } catch {}
+        const isScanning =
+          typeof scanner.isScanning === 'boolean'
+            ? scanner.isScanning
+            : typeof scanner.getState === 'function'
+            ? scanner.getState() === 2
+            : false;
+
+        if (isScanning) {
+          await scanner.stop().catch(() => {});
+        }
+      } catch (err) {
+        // Ignorar si ya estaba detenido
+      }
+
+      try {
+        if (typeof document !== 'undefined' && document.getElementById('barcode-scanner-viewport')) {
+          scanner.clear();
+        }
+      } catch (err) {
+        // Ignorar si el viewport ya no está en el DOM
+      }
     }
+
     if (scannerStreamRef.current) {
-      scannerStreamRef.current.getTracks().forEach((track) => track.stop());
+      try {
+        scannerStreamRef.current.getTracks().forEach((track) => track.stop());
+      } catch {}
       scannerStreamRef.current = null;
     }
+
     setIsBarcodeScannerOpen(false);
+    isStoppingScannerRef.current = false;
   };
 
   // Montar Html5Qrcode automáticamente al abrir el visor
@@ -851,13 +890,27 @@ export default function MobileMonitorPage() {
     return () => {
       isMounted = false;
       clearTimeout(timer);
-      if (html5QrCodeRef.current) {
-        html5QrCodeRef.current.stop().catch(() => {}).then(() => {
-          try {
-            html5QrCodeRef.current?.clear();
-          } catch {}
-          html5QrCodeRef.current = null;
-        });
+      const scanner = html5QrCodeRef.current;
+      html5QrCodeRef.current = null;
+      if (scanner && !isStoppingScannerRef.current) {
+        try {
+          const isScanning =
+            typeof scanner.isScanning === 'boolean'
+              ? scanner.isScanning
+              : typeof scanner.getState === 'function'
+              ? scanner.getState() === 2
+              : false;
+
+          if (isScanning) {
+            scanner.stop().catch(() => {}).finally(() => {
+              try {
+                if (typeof document !== 'undefined' && document.getElementById('barcode-scanner-viewport')) {
+                  scanner.clear();
+                }
+              } catch {}
+            });
+          }
+        } catch {}
       }
     };
   }, [isBarcodeScannerOpen]);
@@ -1244,6 +1297,21 @@ export default function MobileMonitorPage() {
           </button>
 
           <button
+            onClick={() => {
+              setViewMode('monetizacion');
+              setDrawerOpen(false);
+            }}
+            className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs font-bold transition-colors ${
+              viewMode === 'monetizacion'
+                ? 'bg-emerald-700 text-white shadow-xs'
+                : 'text-slate-300 hover:text-white hover:bg-blue-900/40'
+            }`}
+          >
+            <span className="material-symbols-outlined text-xl text-emerald-400">payments</span>
+            <span>Monetización (Inversión y Ganancias)</span>
+          </button>
+
+          <button
             onClick={() => startBarcodeScanner('new')}
             className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-blue-900/40 transition-colors"
           >
@@ -1357,111 +1425,119 @@ export default function MobileMonitorPage() {
         </button>
       </div>
 
-      {/* 5. CAROUSEL HORIZONTAL DE TARJETAS KPIS */}
+      {/* 5. RESUMEN EJECUTIVO DE KPIS (AJUSTADO EN EXACTAMENTE 2 FILAS COMPACTAS) */}
       <div className="p-4 pb-2">
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory">
-          {/* Tarjeta Clientes */}
-          <div className="snap-start shrink-0 w-36 bg-white border border-purple-100 p-3.5 rounded-2xl shadow-xs flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-xl">group</span>
-            </div>
-            <div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase">Clientes</div>
-              <div className="text-xl font-black text-slate-900">{formatQty(kpis.clientes)}</div>
-            </div>
-          </div>
-
-          {/* Tarjeta Productos */}
-          <div className="snap-start shrink-0 w-36 bg-white border border-blue-100 p-3.5 rounded-2xl shadow-xs flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-xl">inventory_2</span>
-            </div>
-            <div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase">Productos</div>
-              <div className="text-xl font-black text-slate-900">{formatQty(kpis.productos)}</div>
-            </div>
-          </div>
-
-          {/* Tarjeta Unidades */}
-          <div className="snap-start shrink-0 w-40 bg-white border border-emerald-100 p-3.5 rounded-2xl shadow-xs flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-xl">shopping_cart</span>
-            </div>
-            <div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase">Unidades</div>
-              <div className="text-xl font-black text-slate-900">{formatQty(kpis.unidades)} und</div>
-            </div>
-          </div>
-
-          {/* Tarjeta Inversión USA (Costo de compra en USA) */}
-          <div className="snap-start shrink-0 w-48 bg-white border border-amber-200/80 p-3.5 rounded-2xl shadow-xs flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-xl">payments</span>
+        <div className="grid grid-cols-2 gap-2.5">
+          {/* Fila 1 - Col 1: Clientes */}
+          <div className="bg-white border border-slate-200/90 p-3 rounded-2xl shadow-2xs flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-700 border border-purple-100 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-lg">group</span>
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] font-bold text-slate-400 uppercase truncate">Inversión USA (Costo)</div>
-              <div className="text-lg font-black text-slate-900 truncate">$ {formatUSD(kpis.inversion)}</div>
-              <div className="text-[10px] text-slate-400 font-mono">≈ S/ {formatPEN(kpis.inversionPEN)}</div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Clientes</div>
+              <div className="text-base font-black text-slate-900 leading-tight">
+                {formatQty(kpis.clientes)}
+              </div>
+              <div className="text-[10px] text-purple-700 font-semibold truncate">
+                {kpis.clientes === 1 ? '1 pedido activo' : `${kpis.clientes} pedidos activos`}
+              </div>
             </div>
           </div>
 
-          {/* Tarjeta Ganancia Estimada (El adicional cobrado sobre el costo) */}
-          <div className="snap-start shrink-0 w-48 bg-emerald-50/70 border border-emerald-200 p-3.5 rounded-2xl shadow-xs flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-emerald-200/80 text-emerald-800 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-xl font-bold">trending_up</span>
+          {/* Fila 1 - Col 2: Productos y Unidades */}
+          <div className="bg-white border border-slate-200/90 p-3 rounded-2xl shadow-2xs flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 border border-blue-100 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-lg">inventory_2</span>
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] font-bold text-emerald-800 uppercase flex items-center gap-1">
-                <span>Ganancia Neta</span>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Productos</div>
+              <div className="text-base font-black text-slate-900 leading-tight">
+                {formatQty(kpis.productos)}
+              </div>
+              <div className="text-[10px] text-blue-700 font-semibold truncate">
+                {formatQty(kpis.unidades)} unidades total
+              </div>
+            </div>
+          </div>
+
+          {/* Fila 2 - Col 1: Inversión USA (Costo Neto de Compra) */}
+          <div className="bg-white border border-amber-200/90 p-3 rounded-2xl shadow-2xs flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 border border-amber-100 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-lg">payments</span>
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">Inversión USA</div>
+              <div className="text-sm font-black text-slate-900 font-mono leading-tight truncate">
+                ${formatUSD(kpis.inversion)}
+              </div>
+              <div className="text-[10px] text-slate-400 font-mono truncate">
+                ≈ S/ {formatPEN(kpis.inversionPEN)}
+              </div>
+            </div>
+          </div>
+
+          {/* Fila 2 - Col 2: Ganancia Neta */}
+          <div className="bg-emerald-50/70 border border-emerald-200/90 p-3 rounded-2xl shadow-2xs flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-lg font-bold">trending_up</span>
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
+                <span>Ganancia</span>
                 {kpis.inversion > 0 && (
                   <span className="text-[9px] px-1 py-0.2 bg-emerald-200 text-emerald-900 rounded font-black">
                     +{kpis.margen.toFixed(0)}%
                   </span>
                 )}
               </div>
-              <div className="text-lg font-black text-emerald-700 truncate">+$ {formatUSD(kpis.ganancia)}</div>
-              <div className="text-[10px] text-emerald-600 font-mono">+S/ {formatPEN(kpis.gananciaPEN)}</div>
-            </div>
-          </div>
-
-          {/* Tarjeta Venta Total Cobrada */}
-          <div className="snap-start shrink-0 w-48 bg-blue-50/70 border border-blue-200 p-3.5 rounded-2xl shadow-xs flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-xl font-bold">point_of_sale</span>
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] font-bold text-blue-800 uppercase">Venta Cobrada</div>
-              <div className="text-lg font-black text-blue-900 truncate">S/ {formatPEN(kpis.ventaTotalPEN)}</div>
-              <div className="text-[10px] text-blue-600 font-mono">$ {formatUSD(kpis.ventaTotalUSD)}</div>
+              <div className="text-sm font-black text-emerald-700 font-mono leading-tight truncate">
+                +${formatUSD(kpis.ganancia)}
+              </div>
+              <div className="text-[10px] text-emerald-600 font-mono truncate">
+                +S/ {formatPEN(kpis.gananciaPEN)}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 6. SELECTOR DE VISTAS (PRODUCTO / CLIENTE) */}
-      <div className="px-4 py-1">
-        <div className="grid grid-cols-2 p-1 bg-white border border-slate-200 rounded-2xl shadow-xs">
+      {/* 6. SELECTOR DE VISTAS (CLIENTES / PRODUCTOS / MONETIZACIÓN) */}
+      <div className="px-4 py-1.5">
+        <div className="grid grid-cols-3 p-1 bg-white border border-slate-200 rounded-2xl shadow-xs gap-1">
           <button
             onClick={() => setViewMode('cliente')}
-            className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+            className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all ${
               viewMode === 'cliente'
-                ? 'bg-blue-600 text-white shadow-xs'
+                ? 'bg-[#0b1b3d] text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <span className="material-symbols-outlined text-base">group</span>
-            <span>Vista por Cliente</span>
+            <span>Clientes</span>
           </button>
+
           <button
             onClick={() => setViewMode('producto')}
-            className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+            className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all ${
               viewMode === 'producto'
-                ? 'bg-blue-600 text-white shadow-xs'
+                ? 'bg-[#0b1b3d] text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <span className="material-symbols-outlined text-base">inventory_2</span>
-            <span>Vista por Producto</span>
+            <span>Productos</span>
+          </button>
+
+          <button
+            onClick={() => setViewMode('monetizacion')}
+            className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all ${
+              viewMode === 'monetizacion'
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-xs'
+                : 'text-emerald-700 hover:bg-emerald-50'
+            }`}
+          >
+            <span className="material-symbols-outlined text-base text-emerald-300">account_balance_wallet</span>
+            <span>Monetización</span>
           </button>
         </div>
       </div>
@@ -1924,16 +2000,266 @@ export default function MobileMonitorPage() {
         </div>
       )}
 
-      {/* 10. BOTTOM NAVIGATION BAR */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2 flex items-center justify-around shadow-lg">
-        <button
-          onClick={() => setDrawerOpen(true)}
-          className="flex flex-col items-center gap-1 text-slate-500 hover:text-blue-600 p-1"
-        >
-          <span className="material-symbols-outlined text-xl">menu</span>
-          <span className="text-[10px] font-bold">Menú</span>
-        </button>
+      {/* 9.5 CONTENIDO PRINCIPAL: VISTA DE MONETIZACIÓN (INVERSIÓN Y GANANCIAS) */}
+      {viewMode === 'monetizacion' && (
+        <div className="px-4 space-y-4 mt-2 pb-24">
+          {/* Hero Card Financiero de Lujo */}
+          <div className="bg-gradient-to-br from-[#081736] via-[#0b2447] to-[#041226] text-white rounded-3xl p-5 shadow-xl border border-blue-900/80 relative overflow-hidden">
+            {/* Resplandor decorativo */}
+            <div className="absolute top-0 right-0 w-44 h-44 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-44 h-44 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
+            <div className="relative z-10 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-black uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Monitor Financiero USA
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono">
+                  1 USD = S/ {exchangeRate.toFixed(2)}
+                </span>
+              </div>
+
+              <div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Ganancia Neta Estimada (Margen Cobrado)
+                </span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-3xl font-black text-emerald-400 font-mono tracking-tight">
+                    +S/ {formatPEN(kpis.gananciaPEN)}
+                  </span>
+                  <span className="text-sm font-black text-emerald-300/80 font-mono">
+                    (+${formatUSD(kpis.ganancia)} USD)
+                  </span>
+                </div>
+                {kpis.inversion > 0 && (
+                  <div className="inline-flex items-center gap-1 mt-1 text-[11px] font-black text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded-md border border-emerald-800/80">
+                    <span className="material-symbols-outlined text-xs">trending_up</span>
+                    <span>Retorno sobre inversión (ROI): +{kpis.margen.toFixed(1)}%</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Sub-métricas: Inversión vs Venta Total */}
+              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-blue-800/60">
+                <div className="bg-blue-950/60 p-3 rounded-2xl border border-blue-800/40">
+                  <span className="text-[10px] font-bold text-amber-300 uppercase block">
+                    Inversión USA (Costo)
+                  </span>
+                  <div className="text-base font-black text-white font-mono mt-0.5">
+                    ${formatUSD(kpis.inversion)}
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    ≈ S/ {formatPEN(kpis.inversionPEN)}
+                  </div>
+                </div>
+
+                <div className="bg-blue-950/60 p-3 rounded-2xl border border-blue-800/40">
+                  <span className="text-[10px] font-bold text-blue-300 uppercase block">
+                    Venta Total Cobrada
+                  </span>
+                  <div className="text-base font-black text-white font-mono mt-0.5">
+                    S/ {formatPEN(kpis.ventaTotalPEN)}
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    ≈ ${formatUSD(kpis.ventaTotalUSD)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Barra de Distribución Visual */}
+              {kpis.ventaTotalUSD > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex justify-between text-[10px] font-semibold text-slate-400">
+                    <span>Distribución del Capital Cobrado:</span>
+                    <span className="text-emerald-300">
+                      {Math.round((kpis.ganancia / (kpis.ventaTotalUSD || 1)) * 100)}% Ganancia limpia
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden flex">
+                    <div
+                      className="bg-amber-500 h-full transition-all duration-500"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          Math.max(
+                            0,
+                            Math.round((kpis.inversion / (kpis.ventaTotalUSD || 1)) * 100)
+                          )
+                        )}%`,
+                      }}
+                      title="Costo Invertido en USA"
+                    />
+                    <div
+                      className="bg-emerald-500 h-full transition-all duration-500 flex-1"
+                      title="Ganancia Neta"
+                    />
+                  </div>
+                  <div className="flex justify-between text-[9px] text-slate-400 font-mono">
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+                      Costo USA: ${formatUSD(kpis.inversion)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                      Ganancia: +${formatUSD(kpis.ganancia)}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Ajuste Rápido de Tipo de Cambio */}
+          <div className="bg-white border border-slate-200 p-3 rounded-2xl flex items-center justify-between shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-amber-600 text-lg">currency_exchange</span>
+              <div>
+                <div className="text-[11px] font-bold text-slate-900">Tipo de cambio aplicado</div>
+                <div className="text-[10px] text-slate-500">1 USD = S/ {exchangeRate.toFixed(2)}</div>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setRateInput(exchangeRate.toFixed(2));
+                setIsRateModalOpen(true);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 font-black text-xs active:scale-95 transition-all"
+            >
+              Cambiar
+            </button>
+          </div>
+
+          {/* Desglose de Ganancia por Cliente */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-sm text-purple-600">group</span>
+                <span>Ganancia por Cliente ({customerGroups.length})</span>
+              </h3>
+            </div>
+
+            {customerGroups.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center text-xs text-slate-500">
+                Aún no hay pedidos registrados para calcular ganancias.
+              </div>
+            ) : (
+              customerGroups.map((cust) => {
+                const profitPen = cust.totalProfitUSD * exchangeRate;
+                const clientMargin =
+                  cust.totalCostUSD > 0
+                    ? Math.round((cust.totalProfitUSD / cust.totalCostUSD) * 100)
+                    : 0;
+
+                return (
+                  <div
+                    key={cust.ticketId}
+                    className="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-2xs space-y-2.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-black text-slate-900 text-xs truncate">
+                          {cust.cliente}
+                        </div>
+                        <div className="text-[10px] font-mono text-slate-400 truncate">
+                          {cust.ticketCode} · {cust.items.length} productos ({cust.totalUnits} und)
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <div className="text-xs font-black text-emerald-600 font-mono">
+                          +S/ {formatPEN(profitPen)}
+                        </div>
+                        <div className="text-[10px] text-emerald-700 font-bold font-mono">
+                          +${formatUSD(cust.totalProfitUSD)} (+{clientMargin}%)
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Resumen de costos vs ventas */}
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-2 grid grid-cols-2 gap-2 text-[11px]">
+                      <div>
+                        <span className="text-slate-400 text-[10px] block font-medium">
+                          Inversión en USA:
+                        </span>
+                        <span className="font-bold text-slate-800 font-mono">
+                          ${formatUSD(cust.totalCostUSD)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-[10px] block font-medium">
+                          Venta Cobrada:
+                        </span>
+                        <span className="font-bold text-slate-800 font-mono">
+                          S/ {formatPEN(cust.totalPEN)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Desglose de Rentabilidad por Producto */}
+          <div className="space-y-2.5 pt-2">
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-sm text-blue-600">inventory_2</span>
+              <span>Rentabilidad por Producto ({groupedProducts.length})</span>
+            </h3>
+
+            {groupedProducts.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center text-xs text-slate-500">
+                Sin productos para monetizar.
+              </div>
+            ) : (
+              groupedProducts.map((p: any, idx: number) => {
+                const prodProfit = p.totalProfitUSD || 0;
+                const prodProfitPen = prodProfit * exchangeRate;
+                const prodCost = p.totalCostUSD || 0;
+                const prodMargin = prodCost > 0 ? Math.round((prodProfit / prodCost) * 100) : 0;
+
+                return (
+                  <div
+                    key={idx}
+                    className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-2xs flex items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden relative">
+                        {p.img ? (
+                          <Image src={p.img} alt={p.name} fill className="object-cover" sizes="40px" />
+                        ) : (
+                          <span className="material-symbols-outlined text-slate-400 text-base">
+                            inventory_2
+                          </span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-black text-xs text-slate-900 truncate">{p.name}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">
+                          {p.totalUnits} und · Costo: ${formatUSD(p.cost_usd)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="text-xs font-black text-emerald-600 font-mono">
+                        +${formatUSD(prodProfit)}
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-mono">
+                        ≈ +S/ {formatPEN(prodProfitPen)} (+{prodMargin}%)
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 10. BOTTOM NAVIGATION BAR */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 py-2 flex items-center justify-around shadow-lg">
         <button
           onClick={() => setViewMode('cliente')}
           className={`flex flex-col items-center gap-1 p-1 ${
@@ -1945,6 +2271,16 @@ export default function MobileMonitorPage() {
         </button>
 
         <button
+          onClick={() => setViewMode('producto')}
+          className={`flex flex-col items-center gap-1 p-1 ${
+            viewMode === 'producto' ? 'text-blue-600 font-black' : 'text-slate-500'
+          }`}
+        >
+          <span className="material-symbols-outlined text-xl">inventory_2</span>
+          <span className="text-[10px]">Productos</span>
+        </button>
+
+        <button
           onClick={() => setIsOrderModalOpen(true)}
           className="flex items-center justify-center -mt-6 w-12 h-12 rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/40 border-4 border-white active:scale-95 transition-transform"
           aria-label="Registrar pedido"
@@ -1953,13 +2289,13 @@ export default function MobileMonitorPage() {
         </button>
 
         <button
-          onClick={() => setViewMode('producto')}
+          onClick={() => setViewMode('monetizacion')}
           className={`flex flex-col items-center gap-1 p-1 ${
-            viewMode === 'producto' ? 'text-blue-600 font-black' : 'text-slate-500'
+            viewMode === 'monetizacion' ? 'text-emerald-600 font-black' : 'text-slate-500'
           }`}
         >
-          <span className="material-symbols-outlined text-xl">inventory_2</span>
-          <span className="text-[10px]">Productos</span>
+          <span className="material-symbols-outlined text-xl text-emerald-600">payments</span>
+          <span className="text-[10px]">Monetización</span>
         </button>
 
         <button

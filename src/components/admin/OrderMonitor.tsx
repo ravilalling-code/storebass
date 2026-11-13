@@ -180,7 +180,7 @@ export function OrderMonitor({
   const { showToast } = useToast();
 
   // Estados principales
-  const [viewMode, setViewMode] = useState<'cliente' | 'producto'>('cliente');
+  const [viewMode, setViewMode] = useState<'cliente' | 'producto' | 'monetizacion'>('cliente');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
   const [showDemo, setShowDemo] = useState(false);
@@ -1178,8 +1178,19 @@ export function OrderMonitor({
 
       {/* 3. BARRA DE CONTROL DE VISTAS Y ACCIONES */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        {/* Toggle Vista por Producto / Vista por Cliente */}
-        <div className="inline-flex p-1 bg-white border border-slate-200 rounded-2xl shadow-xs self-start">
+        {/* Toggle Vista por Producto / Vista por Cliente / Monetización */}
+        <div className="inline-flex p-1 bg-white border border-slate-200 rounded-2xl shadow-xs self-start gap-1">
+          <button
+            onClick={() => setViewMode('cliente')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              viewMode === 'cliente'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">group</span>
+            <span>Vista por Cliente</span>
+          </button>
           <button
             onClick={() => setViewMode('producto')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -1192,15 +1203,15 @@ export function OrderMonitor({
             <span>Vista por Producto</span>
           </button>
           <button
-            onClick={() => setViewMode('cliente')}
+            onClick={() => setViewMode('monetizacion')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              viewMode === 'cliente'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              viewMode === 'monetizacion'
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-sm'
+                : 'text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50'
             }`}
           >
-            <span className="material-symbols-outlined text-base">group</span>
-            <span>Vista por Cliente</span>
+            <span className="material-symbols-outlined text-base text-emerald-300">payments</span>
+            <span>Monetización (Inversión y Ganancias)</span>
           </button>
         </div>
 
@@ -1727,6 +1738,156 @@ export function OrderMonitor({
               );
             })
           )}
+        </div>
+      )}
+
+      {/* 6.5 VISTA DE MONETIZACIÓN (INVERSIÓN Y GANANCIAS) */}
+      {viewMode === 'monetizacion' && (
+        <div className="space-y-6">
+          {/* Banner de Resumen Ejecutivo de Monetización */}
+          <div className="bg-gradient-to-br from-[#0b1b3d] via-[#0d2a58] to-[#061730] text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-blue-900/60 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-black uppercase tracking-wider self-start">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Módulo de Monetización & Rentabilidad
+                </span>
+                <span className="text-xs text-blue-200 font-mono">
+                  Tipo de Cambio Base: 1 USD = S/ {exchangeRate.toFixed(2)} PEN
+                </span>
+              </div>
+
+              <div>
+                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
+                  Ganancia Neta Total (Margen adicional cobrado sobre el costo de USA)
+                </span>
+                <div className="flex flex-wrap items-baseline gap-3 mt-1">
+                  <span className="text-4xl sm:text-5xl font-black text-emerald-400 font-mono tracking-tight">
+                    +S/ {formatPEN(stats.gananciaPEN)}
+                  </span>
+                  <span className="text-xl sm:text-2xl font-black text-emerald-300/80 font-mono">
+                    (+$ {formatUSD(stats.ganancia)} USD)
+                  </span>
+                  {stats.inversion > 0 && (
+                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 rounded-xl text-xs font-black">
+                      +{stats.margen.toFixed(1)}% Retorno / ROI
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Grid 3 columnas: Inversión, Ventas, Margen */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-blue-800/60">
+                <div className="bg-blue-950/60 p-4 rounded-2xl border border-blue-800/40">
+                  <span className="text-xs font-bold text-amber-300 uppercase block">
+                    Inversión en USA (Costo Neto)
+                  </span>
+                  <div className="text-2xl font-black text-white font-mono mt-1">
+                    $ {formatUSD(stats.inversion)}
+                  </div>
+                  <div className="text-xs text-slate-400 font-mono mt-0.5">
+                    ≈ S/ {formatPEN(stats.inversionPEN)}
+                  </div>
+                </div>
+
+                <div className="bg-blue-950/60 p-4 rounded-2xl border border-blue-800/40">
+                  <span className="text-xs font-bold text-blue-300 uppercase block">
+                    Venta Total Cobrada
+                  </span>
+                  <div className="text-2xl font-black text-white font-mono mt-1">
+                    S/ {formatPEN(stats.ventaTotalPEN)}
+                  </div>
+                  <div className="text-xs text-slate-400 font-mono mt-0.5">
+                    ≈ $ {formatUSD(stats.ventaTotalUSD)}
+                  </div>
+                </div>
+
+                <div className="bg-blue-950/60 p-4 rounded-2xl border border-blue-800/40">
+                  <span className="text-xs font-bold text-emerald-300 uppercase block">
+                    Margen Comercial
+                  </span>
+                  <div className="text-2xl font-black text-emerald-400 font-mono mt-1">
+                    {stats.margen.toFixed(1)}%
+                  </div>
+                  <div className="text-xs text-slate-400 mt-0.5">
+                    Sobre cada dólar invertido
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tabla de Monetización por Cliente */}
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-black text-slate-900">
+                  Desglose de Ganancias por Cliente ({processedCustomers.length})
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Visualiza cuánto dinero se invierte y cuánto beneficio limpio genera cada cliente.
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-400 uppercase text-[10px] font-bold">
+                    <th className="py-3 px-3">Cliente / Pedido</th>
+                    <th className="py-3 px-3">Productos</th>
+                    <th className="py-3 px-3">Inversión USA ($)</th>
+                    <th className="py-3 px-3">Venta Cobrada (S/)</th>
+                    <th className="py-3 px-3 text-right">Ganancia Neta</th>
+                    <th className="py-3 px-3 text-right">Margen</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {processedCustomers.map((cust) => {
+                    const profitPen = cust.totalProfitUSD * exchangeRate;
+                    const custMargin =
+                      cust.totalCostUSD > 0
+                        ? Math.round((cust.totalProfitUSD / cust.totalCostUSD) * 100)
+                        : 0;
+
+                    return (
+                      <tr key={cust.ticketId} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3 px-3">
+                          <div className="font-black text-slate-900">{cust.cliente}</div>
+                          <div className="text-[10px] text-slate-400 font-mono">
+                            {cust.ticketCode} {cust.telefono && `· ${cust.telefono}`}
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 text-slate-700">
+                          {cust.items.length} prods ({cust.totalUnits} und)
+                        </td>
+                        <td className="py-3 px-3 font-mono font-bold text-slate-800">
+                          $ {formatUSD(cust.totalCostUSD)}
+                        </td>
+                        <td className="py-3 px-3 font-mono font-bold text-slate-800">
+                          S/ {formatPEN(cust.totalPEN)}
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono font-black text-emerald-600">
+                          +S/ {formatPEN(profitPen)}
+                          <span className="block text-[10px] text-emerald-700 font-normal">
+                            (+${formatUSD(cust.totalProfitUSD)})
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <span className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 font-black text-[11px] border border-emerald-200">
+                            +{custMargin}%
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
