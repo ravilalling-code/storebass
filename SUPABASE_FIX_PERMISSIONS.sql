@@ -22,7 +22,18 @@ CREATE POLICY "Tickets - Monitor acceso completo"
 -- 3. (Alternativa recomendada adicional) Desactivar RLS en tickets para evitar cualquier bloqueo de permisos
 ALTER TABLE public.tickets DISABLE ROW LEVEL SECURITY;
 
--- 4. Notificar a Realtime para sincronización instantánea entre Web y Móvil
+-- 4. Habilitar actualización de tipo de cambio (trip_config) para sincronización en vivo
+ALTER TABLE public.trip_config DISABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "TripConfig - Modificacion admin estricta" ON public.trip_config;
+DROP POLICY IF EXISTS "TripConfig - Acceso total" ON public.trip_config;
+CREATE POLICY "TripConfig - Acceso total"
+    ON public.trip_config FOR ALL
+    TO anon, authenticated, service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- 5. Notificar a Realtime para sincronización instantánea entre Web y Móvil
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'tickets') THEN

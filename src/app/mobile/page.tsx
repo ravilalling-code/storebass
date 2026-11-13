@@ -68,6 +68,7 @@ export default function MobileMonitorPage() {
   const [exchangeRate, setExchangeRate] = useState<number>(3.5);
   const [editingRate, setEditingRate] = useState(false);
   const [rateInput, setRateInput] = useState('3.50');
+  const [isRateModalOpen, setIsRateModalOpen] = useState(false);
   const [tickets, setTickets] = useState<any[]>([]);
   const [expandedClients, setExpandedClients] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -125,6 +126,7 @@ export default function MobileMonitorPage() {
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const editFileInputRef = useRef<HTMLInputElement | null>(null);
   const editGalleryInputRef = useRef<HTMLInputElement | null>(null);
+  const barcodePhotoInputRef = useRef<HTMLInputElement | null>(null);
 
   // Modal para edición rápida de observación de cada producto
   const [editingObs, setEditingObs] = useState<{
@@ -189,13 +191,21 @@ export default function MobileMonitorPage() {
   };
 
   useEffect(() => {
-    // Restaurar caché local de inmediato al entrar
+    // Restaurar caché local de inmediato al entrar (Tickets y Tipo de Cambio)
     try {
       const cached = localStorage.getItem('storebass_cached_tickets');
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setTickets(parsed);
+        }
+      }
+      const cachedRate = localStorage.getItem('storebass_exchange_rate');
+      if (cachedRate) {
+        const parsedRate = parseFloat(cachedRate);
+        if (!isNaN(parsedRate) && parsedRate > 0) {
+          setExchangeRate(parsedRate);
+          setRateInput(parsedRate.toFixed(2));
         }
       }
     } catch {}
@@ -218,7 +228,7 @@ export default function MobileMonitorPage() {
         }
       });
 
-    // Cargar tipo de cambio
+    // Cargar tipo de cambio desde Supabase
     supabase
       .from('trip_config')
       .select('exchange_rate')
@@ -227,8 +237,15 @@ export default function MobileMonitorPage() {
       .then(({ data }) => {
         if (data?.exchange_rate) {
           const rate = Number(data.exchange_rate);
-          setExchangeRate(rate);
-          setRateInput(rate.toFixed(2));
+          const cachedRate = localStorage.getItem('storebass_exchange_rate');
+          // Si no había valor en caché local previo, aplicar el de Supabase
+          if (!cachedRate) {
+            setExchangeRate(rate);
+            setRateInput(rate.toFixed(2));
+            try {
+              localStorage.setItem('storebass_exchange_rate', rate.toFixed(2));
+            } catch {}
+          }
         }
       });
 
@@ -248,8 +265,12 @@ export default function MobileMonitorPage() {
           .single()
           .then(({ data }) => {
             if (data?.exchange_rate) {
-              setExchangeRate(Number(data.exchange_rate));
-              setRateInput(Number(data.exchange_rate).toFixed(2));
+              const rate = Number(data.exchange_rate);
+              setExchangeRate(rate);
+              setRateInput(rate.toFixed(2));
+              try {
+                localStorage.setItem('storebass_exchange_rate', rate.toFixed(2));
+              } catch {}
             }
           });
       })
@@ -705,6 +726,7 @@ export default function MobileMonitorPage() {
       img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   // 7. ESCÁNER DE CÓDIGO DE BARRAS EN TIEMPO REAL CON HTML5-QRCODE
@@ -739,6 +761,25 @@ export default function MobileMonitorPage() {
       );
     }
     showToast('¡Código detectado!', code);
+  };
+
+  const handleScanFromPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setScannerStatus('Analizando imagen del código de barras...');
+    try {
+      const { Html5Qrcode } = await import('html5-qrcode');
+      const tempScanner = html5QrCodeRef.current || new Html5Qrcode('barcode-scanner-viewport');
+      const decodedText = await tempScanner.scanFile(file, true);
+      if (decodedText) {
+        handleBarcodeSuccess(decodedText);
+      }
+    } catch (err) {
+      console.warn('scanFile error:', err);
+      setScannerStatus('No se detectó un código legible en la foto. Ingrésalo manualmente abajo.');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const startBarcodeScanner = (target: 'new' | 'edit') => {
@@ -1044,19 +1085,37 @@ export default function MobileMonitorPage() {
     }
   };
 
-  // Guardar Tipo de Cambio
-  const handleSaveRate = async () => {
-    const val = parseFloat(rateInput);
-    if (isNaN(val) || val <= 0) return;
+  // Guardar Tipo de Cambio con persistencia local inmediata y sincronización en Supabase
+  const handleSaveRate = async (customVal?: number) => {
+    const rawVal = customVal !== undefined ? customVal : parseFloat(rateInput);
+    if (isNaN(rawVal) || rawVal <= 0) {
+      showToast('Error', 'Ingresa un tipo de cambio válido mayor a 0');
+      return;
+    }
+    const val = parseFloat(rawVal.toFixed(2));
     setExchangeRate(val);
+    setRateInput(val.toFixed(2));
     setEditingRate(false);
+    setIsRateModalOpen(false);
+
+    try {
+      localStorage.setItem('storebass_exchange_rate', val.toFixed(2));
+    } catch {}
+
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate([40]);
+    }
 
     const supabase = getSupabaseBrowserClient();
     if (supabase) {
-      await supabase
-        .from('trip_config')
-        .update({ exchange_rate: val, updated_at: new Date().toISOString() })
-        .eq('id', 1);
+      try {
+        await supabase
+          .from('trip_config')
+          .update({ exchange_rate: val, updated_at: new Date().toISOString() })
+          .eq('id', 1);
+      } catch (err) {
+        console.warn('Error al actualizar trip_config:', err);
+      }
     }
     showToast('Tipo de cambio guardado', `S/ ${val.toFixed(2)} por dólar`);
   };
@@ -1211,37 +1270,25 @@ export default function MobileMonitorPage() {
           <div className="text-[11px] text-slate-400 mb-1.5 font-medium">
             Tipo de cambio (USD → PEN)
           </div>
-          {editingRate ? (
-            <div className="flex items-center gap-1.5">
-              <input
-                type="number"
-                step="0.01"
-                value={rateInput}
-                onChange={(e) => setRateInput(e.target.value)}
-                className="w-20 px-2 py-1 bg-white text-slate-900 text-xs font-black rounded-lg border border-blue-400 text-center"
-                autoFocus
-              />
-              <button
-                onClick={handleSaveRate}
-                className="p-1.5 rounded-lg bg-blue-600 text-white font-bold text-xs"
-              >
-                OK
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between bg-blue-950/80 border border-blue-800/80 px-3 py-2 rounded-xl">
+          <button
+            onClick={() => {
+              setRateInput(exchangeRate.toFixed(2));
+              setIsRateModalOpen(true);
+              setDrawerOpen(false);
+            }}
+            className="w-full flex items-center justify-between bg-blue-950/80 hover:bg-blue-900 border border-blue-800/80 px-3 py-2.5 rounded-xl cursor-pointer active:scale-98 transition-all"
+          >
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-amber-400 text-lg">currency_exchange</span>
               <span className="text-sm font-black text-amber-400 font-mono">
                 S/ {exchangeRate.toFixed(2)}
               </span>
-              <button
-                onClick={() => setEditingRate(true)}
-                className="p-1 text-slate-400 hover:text-white"
-                title="Editar tipo de cambio"
-              >
-                <span className="material-symbols-outlined text-base">edit</span>
-              </button>
             </div>
-          )}
+            <span className="text-[10px] font-bold text-blue-200 bg-blue-800/70 px-2.5 py-1 rounded-md flex items-center gap-1">
+              <span className="material-symbols-outlined text-xs">edit</span>
+              Cambiar
+            </span>
+          </button>
         </div>
       </aside>
 
@@ -1284,19 +1331,30 @@ export default function MobileMonitorPage() {
         </button>
       </header>
 
-      {/* 4. SUBHEADER CON FECHA Y TIPO DE CAMBIO */}
+      {/* 4. SUBHEADER CON FECHA Y TIPO DE CAMBIO INTERACTIVO */}
       <div className="bg-white border-b border-slate-200/80 px-4 py-2.5 flex items-center justify-between text-xs text-slate-600 shadow-2xs">
         <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
-          <span className="material-symbols-outlined text-sm">schedule</span>
+          <span className="material-symbols-outlined text-sm text-blue-600">schedule</span>
           <span>
             {new Date().toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })},{' '}
             {new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
-        <div className="flex items-center gap-1 font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg text-[11px]">
+        <button
+          onClick={() => {
+            setRateInput(exchangeRate.toFixed(2));
+            setIsRateModalOpen(true);
+          }}
+          className="group flex items-center gap-1.5 font-bold text-slate-800 bg-amber-50 hover:bg-amber-100 active:scale-95 border border-amber-300/80 px-2.5 py-1 rounded-xl text-[11px] transition-all shadow-xs cursor-pointer"
+          title="Toca para cambiar el tipo de cambio"
+        >
+          <span className="material-symbols-outlined text-sm text-amber-600 group-hover:rotate-45 transition-transform">
+            currency_exchange
+          </span>
           <span className="text-slate-500 font-medium">USD a PEN:</span>
-          <span className="text-blue-700 font-black">S/ {exchangeRate.toFixed(2)}</span>
-        </div>
+          <span className="text-amber-800 font-black font-mono">S/ {exchangeRate.toFixed(2)}</span>
+          <span className="material-symbols-outlined text-xs text-amber-500">edit</span>
+        </button>
       </div>
 
       {/* 5. CAROUSEL HORIZONTAL DE TARJETAS KPIS */}
@@ -1511,8 +1569,25 @@ export default function MobileMonitorPage() {
                         </div>
                       </div>
 
-                      {/* Botones de Modificar / Eliminar Cliente */}
+                      {/* Botones de Modificar / Eliminar Cliente / WhatsApp */}
                       <div className="flex items-center gap-1 shrink-0 ml-2">
+                        {cust.telefono && (
+                          <a
+                            href={`https://wa.me/${cust.telefono.replace(/\D/g, '').length === 9 ? `51${cust.telefono.replace(/\D/g, '')}` : cust.telefono.replace(/\D/g, '')}?text=${encodeURIComponent(
+                              `Hola ${cust.cliente}, te escribo de STOREBASS para informarte sobre tu pedido ${cust.ticketCode}.`
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-8 h-8 rounded-lg text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 flex items-center justify-center transition-colors"
+                            title="Contactar por WhatsApp"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                              <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.41 1.55 1.56 2.41 3.63 2.41 5.83 0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24h-.18zm4.51 11.64c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.24-.75-.67-1.26-1.49-1.4-1.74-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.13-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.35-.77-1.85-.2-.49-.41-.42-.56-.43h-.48c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.78 2.71 4.3 3.8 2.53 1.09 2.53.73 2.99.69.45-.04 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.12-.22-.19-.47-.32z"/>
+                            </svg>
+                          </a>
+                        )}
+
                         <button
                           onClick={() =>
                             setEditingClient({
@@ -1535,7 +1610,7 @@ export default function MobileMonitorPage() {
                           <span className="material-symbols-outlined text-base">delete</span>
                         </button>
 
-                        <div className="bg-[#0b2447] text-white px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 shadow-xs ml-1">
+                        <div className="bg-[#0b2447] text-white px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 shadow-xs ml-1">
                           <span className="text-emerald-300">S/ {formatPEN(cust.totalPEN)}</span>
                         </div>
                       </div>
@@ -1570,6 +1645,18 @@ export default function MobileMonitorPage() {
                         </span>
                       </div>
                     </div>
+
+                    {/* Barra de Progreso de Compra */}
+                    {cust.items.length > 0 && (
+                      <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden mt-0.5">
+                        <div
+                          className="bg-emerald-500 h-full rounded-full transition-all duration-300"
+                          style={{
+                            width: `${Math.round((cust.purchasedCount / cust.items.length) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Detalle Desplegado de Productos */}
@@ -2546,9 +2633,117 @@ export default function MobileMonitorPage() {
         </div>
       )}
 
-      {/* 14. VISOR DE ESCÁNER DE CÓDIGO DE BARRAS CON HTML5-QRCODE Y ENTRADA MANUAL */}
+      {/* 14. MODAL: AJUSTAR TIPO DE CAMBIO (USD → PEN) CON PRESETS RÁPIDOS */}
+      {isRateModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                  <span className="material-symbols-outlined text-2xl">currency_exchange</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">Tipo de Cambio</h3>
+                  <p className="text-[11px] text-slate-500">1 USD a Soles (PEN)</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsRateModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-[11px] font-bold text-slate-500 block mb-1">
+                  Valor en Soles por cada $1.00 USD:
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">
+                    S/
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    max="10"
+                    value={rateInput}
+                    onChange={(e) => setRateInput(e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    className="w-full pl-9 pr-4 py-3 bg-slate-50 border-2 border-amber-300 rounded-2xl text-xl font-black text-slate-900 font-mono text-center focus:bg-white focus:outline-none focus:border-amber-500 shadow-inner"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              {/* Botones de selección rápida (Chips) */}
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider">
+                  Valores rápidos comunes:
+                </span>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {['3.50', '3.60', '3.70', '3.75', '3.80'].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setRateInput(val)}
+                      className={`py-1.5 rounded-xl text-xs font-black font-mono transition-all ${
+                        rateInput === val
+                          ? 'bg-amber-500 text-slate-950 shadow-xs scale-102 ring-2 ring-amber-300'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {val}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Previsualización en vivo */}
+              <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-3 flex items-center justify-between text-xs">
+                <span className="text-amber-900 font-medium text-[11px]">Ejemplo: $100.00 USD</span>
+                <span className="text-amber-800 font-black font-mono text-sm">
+                  = S/ {(100 * (parseFloat(rateInput) || exchangeRate)).toFixed(2)} PEN
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsRateModalOpen(false)}
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveRate()}
+                className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black text-xs shadow-md shadow-amber-500/25 flex items-center justify-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-base font-bold">check</span>
+                <span>Guardar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 15. VISOR DE ESCÁNER DE CÓDIGO DE BARRAS CON HTML5-QRCODE, FOTO Y ENTRADA MANUAL */}
       {isBarcodeScannerOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/95 flex flex-col justify-between p-4 backdrop-blur-md">
+          {/* Input oculto para escanear código desde foto de la cámara/galería */}
+          <input
+            ref={barcodePhotoInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleScanFromPhoto}
+          />
+
           <div className="flex items-center justify-between text-white z-10">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-amber-400 text-2xl">
@@ -2575,7 +2770,17 @@ export default function MobileMonitorPage() {
           <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-xs text-slate-300 space-y-3 z-10 shadow-2xl">
             <p className="font-semibold text-center text-amber-300">{scannerStatus}</p>
 
-            {/* Alternativa: Ingreso manual inmediato */}
+            {/* Alternativa 1: Tomar foto o subir imagen del código */}
+            <button
+              type="button"
+              onClick={() => barcodePhotoInputRef.current?.click()}
+              className="w-full py-2.5 px-3 bg-amber-500/20 border border-amber-500/40 hover:bg-amber-500/30 text-amber-300 rounded-xl font-bold text-xs flex items-center justify-center gap-2 active:scale-98 transition-all"
+            >
+              <span className="material-symbols-outlined text-base">photo_camera</span>
+              <span>Tomar foto o subir foto del código</span>
+            </button>
+
+            {/* Alternativa 2: Ingreso manual inmediato */}
             <div className="space-y-1.5 pt-1 border-t border-slate-800">
               <label className="text-[11px] font-bold text-slate-400 block">
                 O escribe el código de barras manualmente:
