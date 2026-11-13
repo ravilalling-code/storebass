@@ -34,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String PREFS_NAME = "StoreBassPrefs";
     private static final String KEY_APP_URL = "app_url";
-    private static final String DEFAULT_URL = "https://storebass.vercel.app/mobile";
+    private static final String DEFAULT_URL = "https://storebass-gules.vercel.app/mobile";
 
     private SharedPreferences prefs;
 
@@ -70,7 +70,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String getAppUrl() {
-        return prefs.getString(KEY_APP_URL, DEFAULT_URL);
+        String url = prefs.getString(KEY_APP_URL, DEFAULT_URL);
+        if (url == null || url.contains("storebass.vercel.app") || url.isEmpty()) {
+            url = DEFAULT_URL;
+            saveAppUrl(DEFAULT_URL);
+        }
+        return url;
     }
 
     private void saveAppUrl(String url) {

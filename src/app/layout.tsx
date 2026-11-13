@@ -10,7 +10,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://storebass.vercel.app'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://storebass-gules.vercel.app'),
   title: 'STORE BASS — Shopper & Courier | Comprador que viaja a USA',
   description: 'Tienda Online peruana de artículos originales importados de USA. Voy a USA, dime qué quieres y te lo traigo con precio final garantizado y aduanas incluidas.',
   keywords: ['StoreBass', 'Shopper USA', 'Courier Peru', 'Compras en USA', 'Personal Shopper Lima', 'Importaciones USA'],
