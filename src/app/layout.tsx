@@ -15,7 +15,12 @@ export const metadata: Metadata = {
   description: 'Tienda Online peruana de artículos originales importados de USA. Voy a USA, dime qué quieres y te lo traigo con precio final garantizado y aduanas incluidas.',
   keywords: ['StoreBass', 'Shopper USA', 'Courier Peru', 'Compras en USA', 'Personal Shopper Lima', 'Importaciones USA'],
   authors: [{ name: 'Johan Tovar', url: 'https://wa.me/51960759244' }],
-  icons: { icon: '/Storebass.jpg', apple: '/Storebass.jpg' },
+  icons: { icon: '/Storebass-icon-only.png', apple: '/Storebass-icon-only.png' },
+  appleWebApp: {
+    capable: true,
+    title: 'STOREBASS',
+    statusBarStyle: 'black-translucent',
+  },
   openGraph: {
     title: 'STORE BASS — Shopper & Courier Perú',
     description: 'Voy a USA. Dime qué quieres y te lo traigo. Elige de mi catálogo o pega el link de lo que buscas.',
@@ -39,6 +44,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           })();
         ` }} />
         <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/Storebass-icon-only.png" />
+        <meta name="apple-mobile-web-app-title" content="STOREBASS" />
         <meta name="theme-color" content="#0b1b3d" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

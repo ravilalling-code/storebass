@@ -35,3 +35,9 @@ $RECYCLE.BIN/
 *.njsproj
 *.sln
 *.sw?
+
+# Android build cache
+apk-android/.gradle/
+apk-android/build/
+apk-android/app/build/
+
