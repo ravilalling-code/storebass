@@ -29,3 +29,4 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.tickets;
   END IF;
 END $$;
+

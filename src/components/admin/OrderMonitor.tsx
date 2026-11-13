@@ -37,6 +37,25 @@ export interface CustomerOrderGroup {
   estado?: string;
 }
 
+// Formateadores financieros con separadores de miles estándar internacional (e.g. 1,250.00)
+export const formatUSD = (val: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(val || 0);
+};
+
+export const formatPEN = (val: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(val || 0);
+};
+
+export const formatQty = (val: number): string => {
+  return new Intl.NumberFormat('en-US').format(val || 0);
+};
+
 interface OrderMonitorProps {
   tickets: any[];
   exchangeRate: number;
@@ -277,9 +296,15 @@ export function OrderMonitor({
       const items: MonitorItem[] = t.items.map((it: any, idx: number) => {
         const qty = Number(it.quantity) || 1;
         const penPrice = Number(it.price_pen ?? it.price) || 0;
-        const saleUsd = it.sale_usd ? Number(it.sale_usd) : Number((penPrice / rate).toFixed(2));
-        const costUsd = it.cost_usd ? Number(it.cost_usd) : Number((saleUsd * 0.72).toFixed(2));
-        const subtotalPen = it.subtotal_pen ? Number(it.subtotal_pen) : penPrice * qty;
+        const saleUsd = it.sale_usd !== undefined && it.sale_usd !== null && it.sale_usd !== ''
+          ? Number(it.sale_usd)
+          : Number((penPrice / rate).toFixed(2));
+        const costUsd = it.cost_usd !== undefined && it.cost_usd !== null && it.cost_usd !== ''
+          ? Number(it.cost_usd)
+          : 0;
+        const subtotalPen = it.subtotal_pen !== undefined && it.subtotal_pen !== null
+          ? Number(it.subtotal_pen)
+          : penPrice * qty;
 
         return {
           id: it.id || `it-${t.id || t.ticket_code}-${idx}`,
@@ -301,10 +326,10 @@ export function OrderMonitor({
       const totalUnits = items.reduce((acc, item) => acc + item.quantity, 0);
       const purchasedCount = items.filter((i) => i.is_purchased).length;
       const pendingCount = items.length - purchasedCount;
-      const totalCostUSD = items.reduce((acc, i) => acc + i.cost_usd * i.quantity, 0);
-      const totalSaleUSD = items.reduce((acc, i) => acc + i.sale_usd * i.quantity, 0);
+      const totalCostUSD = items.reduce((acc, i) => acc + (i.cost_usd || 0) * i.quantity, 0);
+      const totalSaleUSD = items.reduce((acc, i) => acc + (i.sale_usd || 0) * i.quantity, 0);
       const totalProfitUSD = totalSaleUSD - totalCostUSD;
-      const totalPEN = items.reduce((acc, i) => acc + i.subtotal_pen, 0);
+      const totalPEN = items.reduce((acc, i) => acc + (i.subtotal_pen || 0), 0);
 
       return {
         ticketId: t.id || t.ticket_code,
@@ -370,7 +395,7 @@ export function OrderMonitor({
       .filter(Boolean) as CustomerOrderGroup[];
   }, [processedCustomers, searchQuery, selectedCategory]);
 
-  // Estadísticas del Monitor
+  // Estadísticas del Monitor: Inversión (Costo USA) y Ganancia (El adicional sobre el costo)
   const stats = useMemo(() => {
     const clientsCount = new Set(processedCustomers.map((c) => c.cliente)).size;
     const uniqueProductsCount = new Set(
@@ -380,23 +405,40 @@ export function OrderMonitor({
     let totalUnits = 0;
     let totalInversion = 0;
     let totalGanancia = 0;
+    let totalVentaUSD = 0;
+    let totalVentaPEN = 0;
 
     processedCustomers.forEach((c) => {
       c.items.forEach((i) => {
-        totalUnits += i.quantity;
-        totalInversion += i.cost_usd * i.quantity;
-        totalGanancia += (i.sale_usd - i.cost_usd) * i.quantity;
+        const qty = i.quantity || 1;
+        const cost = (i.cost_usd || 0) * qty;
+        const sale = (i.sale_usd || 0) * qty;
+        const profit = ((i.sale_usd || 0) - (i.cost_usd || 0)) * qty;
+
+        totalUnits += qty;
+        totalInversion += cost;
+        totalVentaUSD += sale;
+        totalGanancia += profit;
+        totalVentaPEN += i.subtotal_pen || 0;
       });
     });
+
+    const rate = exchangeRate || 3.5;
+    const marginPct = totalInversion > 0 ? (totalGanancia / totalInversion) * 100 : 0;
 
     return {
       clientes: clientsCount,
       productos: uniqueProductsCount,
       unidades: totalUnits,
       inversion: totalInversion,
+      inversionPEN: totalInversion * rate,
       ganancia: totalGanancia,
+      gananciaPEN: totalGanancia * rate,
+      ventaTotalUSD: totalVentaUSD,
+      ventaTotalPEN: totalVentaPEN,
+      margen: marginPct,
     };
-  }, [processedCustomers]);
+  }, [processedCustomers, exchangeRate]);
 
   // Vista agrupada por producto
   const groupedProducts = useMemo(() => {
@@ -1066,7 +1108,7 @@ export function OrderMonitor({
             <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
               Clientes
             </div>
-            <div className="text-2xl font-black text-slate-900">{stats.clientes}</div>
+            <div className="text-2xl font-black text-slate-900">{formatQty(stats.clientes)}</div>
           </div>
         </div>
 
@@ -1078,7 +1120,7 @@ export function OrderMonitor({
             <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
               Productos
             </div>
-            <div className="text-2xl font-black text-slate-900">{stats.productos}</div>
+            <div className="text-2xl font-black text-slate-900">{formatQty(stats.productos)}</div>
           </div>
         </div>
 
@@ -1090,20 +1132,23 @@ export function OrderMonitor({
             <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">
               Unidades solicitadas
             </div>
-            <div className="text-2xl font-black text-slate-900">{stats.unidades}</div>
+            <div className="text-2xl font-black text-slate-900">{formatQty(stats.unidades)} und</div>
           </div>
         </div>
 
-        <div className="bg-amber-50/60 border border-amber-100/90 p-4 rounded-2xl flex items-center gap-3 shadow-xs">
-          <div className="w-12 h-12 rounded-xl bg-amber-100/80 text-amber-700 flex items-center justify-center shrink-0">
+        <div className="bg-amber-50/60 border border-amber-200/80 p-4 rounded-2xl flex items-center gap-3 shadow-xs">
+          <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-2xl">payments</span>
           </div>
           <div className="min-w-0">
             <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">
-              Inversión estimada
+              Inversión USA (Costo)
             </div>
             <div className="text-xl sm:text-2xl font-black text-slate-900 truncate">
-              $ {stats.inversion.toFixed(2)}
+              $ {formatUSD(stats.inversion)}
+            </div>
+            <div className="text-[10px] text-slate-400 font-mono">
+              ≈ S/ {formatPEN(stats.inversionPEN)}
             </div>
           </div>
         </div>
@@ -1113,11 +1158,19 @@ export function OrderMonitor({
             <span className="material-symbols-outlined text-2xl font-bold">trending_up</span>
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider truncate">
-              Ganancia estimada
+            <div className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider truncate flex items-center gap-1.5">
+              <span>Ganancia Estimada</span>
+              {stats.inversion > 0 && (
+                <span className="text-[9px] px-1.5 py-0.2 bg-emerald-200 text-emerald-900 rounded font-black">
+                  +{stats.margen.toFixed(0)}%
+                </span>
+              )}
             </div>
             <div className="text-xl sm:text-2xl font-black text-emerald-700 truncate">
-              $ {stats.ganancia.toFixed(2)}
+              +$ {formatUSD(stats.ganancia)}
+            </div>
+            <div className="text-[10px] text-emerald-600 font-mono">
+              +S/ {formatPEN(stats.gananciaPEN)}
             </div>
           </div>
         </div>
@@ -1356,10 +1409,10 @@ export function OrderMonitor({
 
                       <div className="hidden md:flex items-center gap-3 text-xs border-l border-slate-200 pl-3">
                         <span className="text-slate-600 font-semibold">
-                          Inversión: <strong className="text-slate-900 font-black">$ {cust.totalCostUSD.toFixed(2)}</strong>
+                          Inversión: <strong className="text-slate-900 font-black">$ {formatUSD(cust.totalCostUSD)}</strong>
                         </span>
                         <span className="text-emerald-600 font-bold">
-                          Ganancia: <strong>$ {cust.totalProfitUSD.toFixed(2)}</strong>
+                          Ganancia: <strong>+${formatUSD(cust.totalProfitUSD)}</strong>
                         </span>
                       </div>
 
@@ -1367,7 +1420,7 @@ export function OrderMonitor({
                       <div className="bg-[#0b2447] text-white text-xs font-black px-4 py-2 rounded-xl flex items-center gap-1 shadow-xs">
                         <span>Total:</span>
                         <span className="text-emerald-300">
-                          S/ {cust.totalPEN.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          S/ {formatPEN(cust.totalPEN)}
                         </span>
                       </div>
 
@@ -1464,24 +1517,24 @@ export function OrderMonitor({
 
                                 {/* Costo / ud. USD */}
                                 <td className="py-3.5 px-3 text-right font-semibold text-slate-700">
-                                  $ {it.cost_usd.toFixed(2)}
+                                  $ {formatUSD(it.cost_usd)}
                                 </td>
 
                                 {/* Venta / ud. USD */}
                                 <td className="py-3.5 px-3 text-right font-semibold text-slate-900">
-                                  $ {it.sale_usd.toFixed(2)}
+                                  $ {formatUSD(it.sale_usd)}
                                 </td>
 
                                 {/* Precio en Perú (PEN) */}
                                 <td className="py-3.5 px-3 text-center">
                                   <span className="bg-blue-100 text-blue-700 font-bold px-2.5 py-1 rounded-lg text-xs">
-                                    S/ {it.price_pen.toFixed(2)}
+                                    S/ {formatPEN(it.price_pen)}
                                   </span>
                                 </td>
 
                                 {/* Subtotal Perú (PEN) */}
                                 <td className="py-3.5 px-3 text-right font-black text-slate-900">
-                                  S/ {it.subtotal_pen.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  S/ {formatPEN(it.subtotal_pen)}
                                 </td>
 
                                 {/* ¿Comprado? (Checkbox Interactivo) */}
@@ -1564,13 +1617,13 @@ export function OrderMonitor({
                         </div>
                         <div className="flex flex-wrap items-center gap-4">
                           <span className="text-slate-600">
-                            Costo Total: <strong>$ {cust.totalCostUSD.toFixed(2)}</strong>
+                            Inversión USA: <strong>$ {formatUSD(cust.totalCostUSD)}</strong>
                           </span>
                           <span className="text-emerald-700 font-bold">
-                            Ganancia Total: <strong>$ {cust.totalProfitUSD.toFixed(2)}</strong>
+                            Ganancia Adicional: <strong>+${formatUSD(cust.totalProfitUSD)}</strong>
                           </span>
                           <span className="text-slate-900 font-black bg-white px-3 py-1 rounded-lg border border-slate-200 shadow-2xs">
-                            Total Pedido: S/ {cust.totalPEN.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            Total Pedido: S/ {formatPEN(cust.totalPEN)}
                           </span>
                         </div>
                       </div>
@@ -1634,7 +1687,7 @@ export function OrderMonitor({
                         {prod.name}
                       </h4>
                       <div className="text-[11px] text-slate-500">
-                        Costo aprox: $ {prod.cost_usd.toFixed(2)}
+                        Costo aprox: $ {formatUSD(prod.cost_usd)}
                       </div>
                     </div>
                   </div>

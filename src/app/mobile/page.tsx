@@ -38,6 +38,25 @@ export interface MobileCustomerGroup {
   estado?: string;
 }
 
+// Formateadores financieros con separadores de miles estándar internacional (e.g. 1,250.00)
+export const formatUSD = (val: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(val || 0);
+};
+
+export const formatPEN = (val: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(val || 0);
+};
+
+export const formatQty = (val: number): string => {
+  return new Intl.NumberFormat('en-US').format(val || 0);
+};
+
 export default function MobileMonitorPage() {
   const { showToast } = useToast();
 
@@ -252,9 +271,15 @@ export default function MobileMonitorPage() {
       const items: MobileItem[] = (t.items || []).map((it: any, idx: number) => {
         const qty = Number(it.quantity) || 1;
         const penPrice = Number(it.price_pen ?? it.price) || 0;
-        const saleUsd = it.sale_usd ? Number(it.sale_usd) : Number((penPrice / rate).toFixed(2));
-        const costUsd = it.cost_usd ? Number(it.cost_usd) : Number((saleUsd * 0.72).toFixed(2));
-        const subtotalPen = it.subtotal_pen ? Number(it.subtotal_pen) : penPrice * qty;
+        const saleUsd = it.sale_usd !== undefined && it.sale_usd !== null && it.sale_usd !== ''
+          ? Number(it.sale_usd)
+          : Number((penPrice / rate).toFixed(2));
+        const costUsd = it.cost_usd !== undefined && it.cost_usd !== null && it.cost_usd !== ''
+          ? Number(it.cost_usd)
+          : 0;
+        const subtotalPen = it.subtotal_pen !== undefined && it.subtotal_pen !== null
+          ? Number(it.subtotal_pen)
+          : penPrice * qty;
 
         return {
           id: it.id || `it-${t.id || t.ticket_code}-${idx}`,
@@ -276,10 +301,10 @@ export default function MobileMonitorPage() {
       const totalUnits = items.reduce((acc, item) => acc + item.quantity, 0);
       const purchasedCount = items.filter((i) => i.is_purchased).length;
       const pendingCount = items.length - purchasedCount;
-      const totalCostUSD = items.reduce((acc, i) => acc + i.cost_usd * i.quantity, 0);
-      const totalSaleUSD = items.reduce((acc, i) => acc + i.sale_usd * i.quantity, 0);
+      const totalCostUSD = items.reduce((acc, i) => acc + (i.cost_usd || 0) * i.quantity, 0);
+      const totalSaleUSD = items.reduce((acc, i) => acc + (i.sale_usd || 0) * i.quantity, 0);
       const totalProfitUSD = totalSaleUSD - totalCostUSD;
-      const totalPEN = items.reduce((acc, i) => acc + i.subtotal_pen, 0);
+      const totalPEN = items.reduce((acc, i) => acc + (i.subtotal_pen || 0), 0);
 
       return {
         ticketId: t.id,
@@ -333,7 +358,7 @@ export default function MobileMonitorPage() {
       .filter(Boolean) as MobileCustomerGroup[];
   }, [customerGroups, searchQuery, selectedCategory]);
 
-  // KPIs
+  // KPIs de operaciones USA: Inversión (Costo USA) y Ganancia (Margen Adicional en precio de venta)
   const kpis = useMemo(() => {
     const clientsCount = new Set(customerGroups.map((c) => c.cliente)).size;
     const prodsCount = new Set(
@@ -342,23 +367,40 @@ export default function MobileMonitorPage() {
     let units = 0;
     let cost = 0;
     let profit = 0;
+    let salesUSD = 0;
+    let salesPEN = 0;
 
     customerGroups.forEach((c) => {
       c.items.forEach((it) => {
-        units += it.quantity;
-        cost += it.cost_usd * it.quantity;
-        profit += (it.sale_usd - it.cost_usd) * it.quantity;
+        const qty = it.quantity || 1;
+        const itemCost = (it.cost_usd || 0) * qty;
+        const itemSale = (it.sale_usd || 0) * qty;
+        const itemProfit = ((it.sale_usd || 0) - (it.cost_usd || 0)) * qty;
+
+        units += qty;
+        cost += itemCost;
+        salesUSD += itemSale;
+        profit += itemProfit;
+        salesPEN += it.subtotal_pen || 0;
       });
     });
+
+    const rate = exchangeRate || 3.5;
+    const marginPct = cost > 0 ? (profit / cost) * 100 : 0;
 
     return {
       clientes: clientsCount,
       productos: prodsCount,
       unidades: units,
       inversion: cost,
+      inversionPEN: cost * rate,
       ganancia: profit,
+      gananciaPEN: profit * rate,
+      ventaTotalUSD: salesUSD,
+      ventaTotalPEN: salesPEN,
+      margen: marginPct,
     };
-  }, [customerGroups]);
+  }, [customerGroups, exchangeRate]);
 
   // Vista agrupada por producto
   const groupedProducts = useMemo(() => {
@@ -1260,53 +1302,79 @@ export default function MobileMonitorPage() {
       {/* 5. CAROUSEL HORIZONTAL DE TARJETAS KPIS */}
       <div className="p-4 pb-2">
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory">
+          {/* Tarjeta Clientes */}
           <div className="snap-start shrink-0 w-36 bg-white border border-purple-100 p-3.5 rounded-2xl shadow-xs flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-xl">group</span>
             </div>
             <div>
               <div className="text-[10px] font-bold text-slate-400 uppercase">Clientes</div>
-              <div className="text-xl font-black text-slate-900">{kpis.clientes}</div>
+              <div className="text-xl font-black text-slate-900">{formatQty(kpis.clientes)}</div>
             </div>
           </div>
 
+          {/* Tarjeta Productos */}
           <div className="snap-start shrink-0 w-36 bg-white border border-blue-100 p-3.5 rounded-2xl shadow-xs flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-xl">inventory_2</span>
             </div>
             <div>
               <div className="text-[10px] font-bold text-slate-400 uppercase">Productos</div>
-              <div className="text-xl font-black text-slate-900">{kpis.productos}</div>
+              <div className="text-xl font-black text-slate-900">{formatQty(kpis.productos)}</div>
             </div>
           </div>
 
+          {/* Tarjeta Unidades */}
           <div className="snap-start shrink-0 w-40 bg-white border border-emerald-100 p-3.5 rounded-2xl shadow-xs flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-xl">shopping_cart</span>
             </div>
             <div>
               <div className="text-[10px] font-bold text-slate-400 uppercase">Unidades</div>
-              <div className="text-xl font-black text-slate-900">{kpis.unidades} und</div>
+              <div className="text-xl font-black text-slate-900">{formatQty(kpis.unidades)} und</div>
             </div>
           </div>
 
-          <div className="snap-start shrink-0 w-44 bg-white border border-amber-100 p-3.5 rounded-2xl shadow-xs flex items-center gap-2.5">
+          {/* Tarjeta Inversión USA (Costo de compra en USA) */}
+          <div className="snap-start shrink-0 w-48 bg-white border border-amber-200/80 p-3.5 rounded-2xl shadow-xs flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-xl">payments</span>
             </div>
-            <div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase">Inversión USA</div>
-              <div className="text-lg font-black text-slate-900">$ {kpis.inversion.toFixed(2)}</div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold text-slate-400 uppercase truncate">Inversión USA (Costo)</div>
+              <div className="text-lg font-black text-slate-900 truncate">$ {formatUSD(kpis.inversion)}</div>
+              <div className="text-[10px] text-slate-400 font-mono">≈ S/ {formatPEN(kpis.inversionPEN)}</div>
             </div>
           </div>
 
-          <div className="snap-start shrink-0 w-44 bg-white border border-emerald-200 p-3.5 rounded-2xl shadow-xs flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+          {/* Tarjeta Ganancia Estimada (El adicional cobrado sobre el costo) */}
+          <div className="snap-start shrink-0 w-48 bg-emerald-50/70 border border-emerald-200 p-3.5 rounded-2xl shadow-xs flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-xl bg-emerald-200/80 text-emerald-800 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-xl font-bold">trending_up</span>
             </div>
-            <div>
-              <div className="text-[10px] font-bold text-emerald-800 uppercase">Ganancia Est.</div>
-              <div className="text-lg font-black text-emerald-700">$ {kpis.ganancia.toFixed(2)}</div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold text-emerald-800 uppercase flex items-center gap-1">
+                <span>Ganancia Neta</span>
+                {kpis.inversion > 0 && (
+                  <span className="text-[9px] px-1 py-0.2 bg-emerald-200 text-emerald-900 rounded font-black">
+                    +{kpis.margen.toFixed(0)}%
+                  </span>
+                )}
+              </div>
+              <div className="text-lg font-black text-emerald-700 truncate">+$ {formatUSD(kpis.ganancia)}</div>
+              <div className="text-[10px] text-emerald-600 font-mono">+S/ {formatPEN(kpis.gananciaPEN)}</div>
+            </div>
+          </div>
+
+          {/* Tarjeta Venta Total Cobrada */}
+          <div className="snap-start shrink-0 w-48 bg-blue-50/70 border border-blue-200 p-3.5 rounded-2xl shadow-xs flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-xl font-bold">point_of_sale</span>
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold text-blue-800 uppercase">Venta Cobrada</div>
+              <div className="text-lg font-black text-blue-900 truncate">S/ {formatPEN(kpis.ventaTotalPEN)}</div>
+              <div className="text-[10px] text-blue-600 font-mono">$ {formatUSD(kpis.ventaTotalUSD)}</div>
             </div>
           </div>
         </div>
@@ -1468,7 +1536,7 @@ export default function MobileMonitorPage() {
                         </button>
 
                         <div className="bg-[#0b2447] text-white px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 shadow-xs ml-1">
-                          <span className="text-emerald-300">S/ {cust.totalPEN.toFixed(2)}</span>
+                          <span className="text-emerald-300">S/ {formatPEN(cust.totalPEN)}</span>
                         </div>
                       </div>
                     </div>
@@ -1563,10 +1631,10 @@ export default function MobileMonitorPage() {
                             {/* Precios y Botón Editar Producto */}
                             <div className="text-right shrink-0">
                               <div className="text-xs font-black text-slate-900 font-mono">
-                                S/ {it.subtotal_pen.toFixed(2)}
+                                S/ {formatPEN(it.subtotal_pen)}
                               </div>
                               <div className="text-[10px] text-slate-400 font-mono">
-                                Costo: ${it.cost_usd.toFixed(2)}
+                                Costo: ${formatUSD(it.cost_usd)}
                               </div>
                               <div className="flex items-center justify-end gap-1 mt-1">
                                 <button
@@ -1654,17 +1722,17 @@ export default function MobileMonitorPage() {
                         <div className="flex justify-between text-slate-600 text-[11px]">
                           <span>Inversión USA requerida:</span>
                           <strong className="text-slate-900 font-black font-mono">
-                            $ {cust.totalCostUSD.toFixed(2)}
+                            $ {formatUSD(cust.totalCostUSD)}
                           </strong>
                         </div>
                         <div className="flex justify-between text-emerald-700 text-[11px]">
-                          <span>Ganancia estimada:</span>
-                          <strong className="font-mono">$ {cust.totalProfitUSD.toFixed(2)}</strong>
+                          <span>Ganancia estimada (adicional):</span>
+                          <strong className="font-mono">+$ {formatUSD(cust.totalProfitUSD)}</strong>
                         </div>
                         <div className="flex justify-between text-slate-900 font-black pt-1 border-t border-slate-100 text-xs">
                           <span>Total a cobrar en Perú:</span>
                           <span className="text-blue-700 font-mono">
-                            S/ {cust.totalPEN.toFixed(2)}
+                            S/ {formatPEN(cust.totalPEN)}
                           </span>
                         </div>
                       </div>
