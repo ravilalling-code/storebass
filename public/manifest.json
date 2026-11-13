@@ -1,6 +1,6 @@
 {
-  "name": "STORE BASS — Monitor de Pedidos",
-  "short_name": "StoreBass Monitor",
+  "name": "StoreBass Monitor",
+  "short_name": "StoreBass",
   "description": "App móvil para control y seguimiento de pedidos, compras en USA y ganancias",
   "start_url": "/mobile",
   "display": "standalone",
@@ -9,15 +9,16 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/Storebass.jpg",
+      "src": "/Storebass-icon-only.png",
       "sizes": "192x192",
-      "type": "image/jpeg"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "/Storebass.jpg",
+      "src": "/Storebass-icon-only.png",
       "sizes": "512x512",
-      "type": "image/jpeg"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
-

@@ -673,8 +673,8 @@ export default function MobileMonitorPage() {
         {/* Header del Drawer */}
         <div className="p-5 border-b border-blue-900/60 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-blue-400">
-              <span className="material-symbols-outlined text-2xl">shopping_bag</span>
+            <div className="w-12 h-12 rounded-2xl overflow-hidden relative border border-amber-500/30 shadow-lg shrink-0 bg-slate-900">
+              <Image src="/Storebass-icon-only.png" alt="Store Bass" fill className="object-cover" sizes="48px" />
             </div>
             <div>
               <div className="font-black text-base tracking-tight leading-none text-white">
@@ -801,12 +801,15 @@ export default function MobileMonitorPage() {
           >
             <span className="material-symbols-outlined text-2xl">menu</span>
           </button>
+          <div className="w-8 h-8 rounded-xl overflow-hidden relative border border-amber-500/40 shadow-xs shrink-0 bg-slate-900">
+            <Image src="/Storebass-icon-only.png" alt="Store Bass" fill className="object-cover" sizes="32px" />
+          </div>
           <div>
             <h1 className="text-base font-black tracking-tight flex items-center gap-1.5">
               Monitor de Pedidos
             </h1>
             <div className="text-[10px] text-blue-300 font-medium flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
               <span>Sincronizado con Web & BD</span>
             </div>
           </div>
@@ -1360,6 +1363,7 @@ export default function MobileMonitorPage() {
                   <label className="block text-slate-700 font-bold mb-1">Cantidad</label>
                   <input
                     type="number"
+                    inputMode="numeric"
                     min="1"
                     value={orderForm.quantity}
                     onChange={(e) =>
@@ -1375,6 +1379,7 @@ export default function MobileMonitorPage() {
                   <label className="block text-slate-700 font-bold mb-1">Costo USA ($)</label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     step="0.1"
                     value={orderForm.costUsd}
                     onChange={(e) =>
@@ -1388,6 +1393,7 @@ export default function MobileMonitorPage() {
                   <label className="block text-slate-700 font-bold mb-1">Precio Cobrado ($)</label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     step="0.1"
                     value={orderForm.saleUsd}
                     onChange={(e) =>
